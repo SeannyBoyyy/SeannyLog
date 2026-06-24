@@ -514,7 +514,77 @@
 
 const STORAGE_KEY = 'ironlog.v1';
 const HINT_KEY = 'ironlog.hint.dismissed';
+const DRAFT_KEY = 'ironlog.draft';
+const UNIT_KEY = 'ironlog.unit';
 let splitSegment = 'days';
+
+/* ---------- unit helpers ---------- */
+const KG_TO_LBS = 2.20462;
+function getUnit(){ return localStorage.getItem(UNIT_KEY) || 'kg'; }
+function setUnit(u){ localStorage.setItem(UNIT_KEY, u); }
+function toDisplay(kg){
+  const n = Number(kg); if(!isFinite(n)) return 0;
+  return getUnit()==='lbs' ? Math.round(n*KG_TO_LBS*4)/4 : n;
+}
+function toKg(val){
+  const n = Number(val); if(!isFinite(n)) return 0;
+  return getUnit()==='lbs' ? +(n/KG_TO_LBS).toFixed(4) : n;
+}
+function unitLabel(){ return getUnit(); }
+function incrDefault(){ return getUnit()==='lbs' ? 5 : 2.5; }
+function incrStep(){   return getUnit()==='lbs' ? 0.5 : 0.25; }
+function incrMin(){    return getUnit()==='lbs' ? 0.5 : 0.25; }
+function incrMax(){    return getUnit()==='lbs' ? 50  : 20;   }
+
+/* ---------- workout draft (survives page reload mid-workout) ---------- */
+function saveDraft(){
+  try{
+    const day = state.days[state.cycleIndex];
+    if(!day || day.label==='Rest' || !day.exerciseIds.length) return;
+    const entries = {};
+    day.exerciseIds.forEach(exId => {
+      const sets = [];
+      let i = 0;
+      while(true){
+        const w = document.getElementById(`set-w-${exId}-${i}`);
+        const r = document.getElementById(`set-r-${exId}-${i}`);
+        if(!w || !r) break;
+        sets.push({weight: w.value, reps: r.value});
+        i++;
+      }
+      entries[exId] = sets;
+    });
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      cycleIndex: state.cycleIndex,
+      dayId: day.id,
+      entries
+    }));
+  }catch(e){}
+}
+
+function clearDraft(){
+  localStorage.removeItem(DRAFT_KEY);
+}
+
+function restoreDraft(){
+  try{
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if(!raw) return false;
+    const draft = JSON.parse(raw);
+    const day = state.days[state.cycleIndex];
+    if(!draft || draft.cycleIndex !== state.cycleIndex || draft.dayId !== day?.id) return false;
+    let anyRestored = false;
+    Object.entries(draft.entries).forEach(([exId, sets]) => {
+      sets.forEach((set, i) => {
+        const w = document.getElementById(`set-w-${exId}-${i}`);
+        const r = document.getElementById(`set-r-${exId}-${i}`);
+        if(w && set.weight !== '') { w.value = set.weight; anyRestored = true; }
+        if(r && set.reps !== '')   { r.value = set.reps;   anyRestored = true; }
+      });
+    });
+    return anyRestored;
+  }catch(e){ return false; }
+}
 
 const MUSCLES = ['Chest','Back','Shoulders','Biceps','Triceps','Quads','Hamstrings','Glutes','Calves','Abs'];
 
@@ -699,7 +769,7 @@ function finishWorkout(){
       if(!w || !r) break;
       const wv = parseFloat(w.value);
       const rv = parseInt(r.value,10);
-      if(!isNaN(wv) && !isNaN(rv) && wv>0 && rv>0) sets.push({weight:wv, reps:rv});
+      if(!isNaN(wv) && !isNaN(rv) && wv>0 && rv>0) sets.push({weight:toKg(wv), reps:rv});
       i++;
     }
     if(sets.length){ entries[exId] = sets; anyFilled = true; }
@@ -720,6 +790,7 @@ function finishWorkout(){
 
   state.logs.push({ id: uid('log'), dayId: day.id, date: new Date().toISOString(), entries });
   advanceCycle();
+  clearDraft();
   save();
   renderToday();
   renderProgress();
@@ -819,27 +890,28 @@ function renderExerciseCard(ex){
   const badgeHtml = status.ready ? `
     <div class="ascend-badge">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
-      Time to ascend — add ${formatWeight(ex.increment)}kg
+      Time to ascend — add ${formatWeight(toDisplay(ex.increment))}${unitLabel()}
     </div>` : '';
 
   const setsHtml = Array.from({length: ex.sets}).map((_,i) => {
     const lastSet = lastSets ? lastSets[i] : null;
-    const prefillWeight = status.ready ? status.suggestedWeight : (lastSet ? lastSet.weight : '');
+    const rawW = status.ready ? status.suggestedWeight : (lastSet ? lastSet.weight : null);
+    const prefillWeight = rawW != null ? formatWeight(toDisplay(rawW)) : '';
     const placeholderReps = lastSet ? `last ${lastSet.reps}` : 'reps';
     return `
       <div class="set-row">
         <span class="set-row-label">${i+1}</span>
-        <input class="set-input unit" type="text" inputmode="decimal" placeholder="kg" value="${(prefillWeight===''||prefillWeight==null)?'':prefillWeight}" id="set-w-${ex.id}-${i}">
+        <input class="set-input unit" type="text" inputmode="decimal" placeholder="${unitLabel()}" value="${prefillWeight}" id="set-w-${ex.id}-${i}">
         <span class="set-x">×</span>
         <input class="set-input" type="text" inputmode="numeric" placeholder="${placeholderReps}" id="set-r-${ex.id}-${i}">
       </div>`;
   }).join('');
 
   const lastLine = lastSets
-    ? `Last: ${lastSets.map(s => `${formatWeight(s.weight)}kg × ${s.reps}`).join(' · ')}`
+    ? `Last: ${lastSets.map(s => `${formatWeight(toDisplay(s.weight))}${unitLabel()} × ${s.reps}`).join(' · ')}`
     : `No history yet — target ${ex.repMin}–${ex.repMax} reps`;
 
-  const lastWeight = (lastSets && lastSets.length) ? lastSets[lastSets.length-1].weight : '';
+  const lastWeight = (lastSets && lastSets.length) ? formatWeight(toDisplay(lastSets[lastSets.length-1].weight)) : '';
   return `
     <div class="ex-card" data-ex="${ex.id}">
       <div class="ex-card-top">
@@ -866,13 +938,18 @@ let todayWired = false;
 
 function wireTodayDelegation(){
   const root = document.getElementById('view-today');
+
+  // autosave draft on every input change
+  root.addEventListener('input', (e) => {
+    if(e.target.classList.contains('set-input')) saveDraft();
+  });
   root.addEventListener('click', (e) => {
     // Finish workout button
     if(e.target.id === 'btn-finish'){ finishWorkout(); return; }
 
     // Finish rest button
     if(e.target.id === 'btn-finish-rest'){
-      advanceCycle(); save(); renderToday();
+      advanceCycle(); clearDraft(); save(); renderToday();
       toast('Rest logged. Back at it next session.');
       return;
     }
@@ -911,6 +988,7 @@ function wireTodayDelegation(){
       row.querySelector('input').focus();
       const rmBtn = addBtn.closest('.ex-card')?.querySelector('[data-remove-set]');
       if(rmBtn) rmBtn.disabled = false;
+      saveDraft();
       return;
     }
 
@@ -924,6 +1002,7 @@ function wireTodayDelegation(){
       if(rows.length <= 1) return;
       rows[rows.length - 1].remove();
       if(container.querySelectorAll('.set-row').length <= 1) rmBtn.disabled = true;
+      saveDraft();
     }
   });
 }
@@ -971,6 +1050,9 @@ function renderToday(){
   wireInstallHint();
   wireOnboarding();
   if(!todayWired){ wireTodayDelegation(); todayWired = true; }
+  // restore any mid-workout draft saved before page reload
+  const restored = restoreDraft();
+  if(restored) toast('Draft restored — your inputs are back.');
 }
 
 /* ---------- rendering: progress ---------- */
@@ -993,9 +1075,9 @@ function renderProgressCard(ex){
 
   const last = history[history.length-1];
   const bestWeight = Math.max(...history.map(h => Math.max(...h.sets.map(s=>s.weight))));
-  const spark = sparklineSvg(history.map(h => Math.max(...h.sets.map(s=>s.weight))));
+  const spark = sparklineSvg(history.map(h => toDisplay(Math.max(...h.sets.map(s=>s.weight)))));
   const rows = history.slice(-6).reverse().map(h =>
-    `<tr><td>${formatDate(h.date)}</td><td>${h.sets.map(s=>`${formatWeight(s.weight)}×${s.reps}`).join(', ')}</td></tr>`
+    `<tr><td>${formatDate(h.date)}</td><td>${h.sets.map(s=>`${formatWeight(toDisplay(s.weight))}${unitLabel()}×${s.reps}`).join(', ')}</td></tr>`
   ).join('');
 
   return `
@@ -1003,7 +1085,7 @@ function renderProgressCard(ex){
       <div class="progress-card-head">
         <div>
           <div class="ex-name" style="font-size:14.5px;">${escapeHtml(ex.name)}</div>
-          <div class="ex-meta">${ex.repMin}–${ex.repMax} reps · last: ${formatWeight(last.sets[0].weight)}kg</div>
+          <div class="ex-meta">${ex.repMin}–${ex.repMax} reps · last: ${formatWeight(toDisplay(last.sets[0].weight))}${unitLabel()}</div>
         </div>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
           <div class="streak-dots">${dotsHtml}</div>
@@ -1012,8 +1094,8 @@ function renderProgressCard(ex){
       </div>
       <div class="progress-card-body hidden">
         <div class="progress-stats">
-          <div class="stat"><div class="stat-label">Best</div><div class="stat-value">${formatWeight(bestWeight)}</div></div>
-          <div class="stat"><div class="stat-label">Last</div><div class="stat-value">${formatWeight(last.sets[0].weight)}</div></div>
+          <div class="stat"><div class="stat-label">Best</div><div class="stat-value">${formatWeight(toDisplay(bestWeight))} <span style="font-size:12px;color:var(--chalk-dim)">${unitLabel()}</span></div></div>
+          <div class="stat"><div class="stat-label">Last</div><div class="stat-value">${formatWeight(toDisplay(last.sets[0].weight))} <span style="font-size:12px;color:var(--chalk-dim)">${unitLabel()}</span></div></div>
           <div class="stat"><div class="stat-label">Sessions</div><div class="stat-value">${history.length}</div></div>
         </div>
         <div class="spark-wrap">${spark}</div>
@@ -1115,8 +1197,8 @@ function renderSplit(){
               <input type="number" class="ex-edit-input" min="1" max="30" value="${ex.repMax}" data-repmax="${ex.id}">
             </div>
             <div class="ex-edit-field">
-              <label class="ex-edit-label">+kg</label>
-              <input type="number" class="ex-edit-input" step="0.25" min="0.25" value="${ex.increment}" data-increment="${ex.id}">
+              <label class="ex-edit-label">+${unitLabel()}</label>
+              <input type="number" class="ex-edit-input" step="${incrStep()}" min="${incrMin()}" value="${formatWeight(toDisplay(ex.increment))}" data-increment="${ex.id}">
             </div>
           </div>
         </div>`;
@@ -1212,7 +1294,7 @@ function wireSplitView(root){
   root.querySelectorAll('[data-increment]').forEach(input => {
     input.addEventListener('input', () => {
       const v = parseFloat(input.value);
-      if(state.exercises[input.dataset.increment]) state.exercises[input.dataset.increment].increment = (!isNaN(v) && v > 0) ? v : 1;
+      if(state.exercises[input.dataset.increment]) state.exercises[input.dataset.increment].increment = (!isNaN(v) && v > 0) ? toKg(v) : toKg(1);
       save();
     });
   });
@@ -1288,7 +1370,7 @@ function openCustomExerciseForm(dayId){
   function showForm(){
     // form state
     let selectedMuscle = 'Chest';
-    let setsVal = 2, repMinVal = 8, repMaxVal = 10, incrVal = 2.5;
+    let setsVal = 2, repMinVal = 8, repMaxVal = 10, incrVal = incrDefault();
 
     function musclePills(){
       return MUSCLES.map(m => `
@@ -1330,9 +1412,9 @@ function openCustomExerciseForm(dayId){
           </div>
         </div>
 
-        <label class="field-label">Weight increment (kg)</label>
+        <label class="field-label">Weight increment (${unitLabel()})</label>
         <div class="stepper">
-          <button class="stepper-btn" id="incr-minus" ${incrVal<=0.25?'disabled':''}>−</button>
+          <button class="stepper-btn" id="incr-minus" ${incrVal<=incrMin()?'disabled':''}>−</button>
           <input class="stepper-val" id="cf-increment" type="number" value="${incrVal}" inputmode="decimal" readonly>
           <button class="stepper-btn" id="incr-plus">+</button>
         </div>
@@ -1376,7 +1458,7 @@ function openCustomExerciseForm(dayId){
       wireStep('sets-minus','sets-plus','cf-sets',1,1,6,()=>setsVal,v=>setsVal=v);
       wireStep('repmin-minus','repmin-plus','cf-repmin',1,1,30,()=>repMinVal,v=>repMinVal=v);
       wireStep('repmax-minus','repmax-plus','cf-repmax',1,1,30,()=>repMaxVal,v=>repMaxVal=v);
-      wireStep('incr-minus','incr-plus','cf-increment',0.25,0.25,20,()=>incrVal,v=>incrVal=v);
+      wireStep('incr-minus','incr-plus','cf-increment',incrStep(),incrMin(),incrMax(),()=>incrVal,v=>incrVal=v);
 
       document.getElementById('cf-save').addEventListener('click', () => {
         const name = document.getElementById('cf-name').value.trim();
@@ -1388,7 +1470,7 @@ function openCustomExerciseForm(dayId){
           sets: setsVal,
           repMin: repMinVal,
           repMax: repMaxVal,
-          increment: incrVal,
+          increment: toKg(incrVal),
           custom:true
         };
         if(dayId){
@@ -1447,9 +1529,20 @@ function openCustomExerciseForm(dayId){
 /* ---------- sheet: settings ---------- */
 function openSettings(){
   const isMobile = navigator.share !== undefined;
+  const unit = getUnit();
   setSheet(`
     <div class="sheet-handle"></div>
     <h2 class="sheet-title">Settings</h2>
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-text">Weight unit</div>
+        <div class="settings-row-sub">Applies everywhere — history auto-converts</div>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn btn-small ${unit==='kg'?'btn-primary':'btn-ghost'}" id="unit-kg">KG</button>
+        <button class="btn btn-small ${unit==='lbs'?'btn-primary':'btn-ghost'}" id="unit-lbs">LBS</button>
+      </div>
+    </div>
     <div class="settings-row">
       <div>
         <div class="settings-row-text">Export backup</div>
@@ -1486,6 +1579,8 @@ function openSettings(){
   document.getElementById('btn-export').addEventListener('click', exportData);
   document.getElementById('btn-import').addEventListener('click', openImportSheet);
   document.getElementById('btn-set-day').addEventListener('click', openDayPicker);
+  document.getElementById('unit-kg').addEventListener('click', () => { setUnit('kg'); closeSheet(); renderAll(); toast('Unit set to kg.'); });
+  document.getElementById('unit-lbs').addEventListener('click', () => { setUnit('lbs'); closeSheet(); renderAll(); toast('Unit set to lbs.'); });
   document.getElementById('btn-undo').addEventListener('click', () => {
     const didUndo = undoLastLog();
     if(didUndo) closeSheet();
