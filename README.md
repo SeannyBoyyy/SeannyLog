@@ -1,14 +1,14 @@
-# Iron Log
+# SeannyLog
 
 A no-nonsense progressive overload tracker built as a PWA — installable on your phone, works fully offline, stores everything locally. No account, no cloud, no ads.
 
-![Iron Log](icon-512.png)
+![SeannyLog](icon-512.png)
 
 ---
 
 ## What it does
 
-Iron Log is built around one question: **am I actually getting stronger?**
+SeannyLog is built around one question: **am I actually getting stronger?**
 
 You set up your training split (Push / Pull / Legs / Rest or any pattern you want), assign exercises to each day, and log your weight and reps every session. The app tracks a two-session streak per exercise — once you hit the top of your rep range across all sets in two sessions in a row at the same weight, it tells you it's **Time to Ascend** and pre-fills the next suggested weight automatically.
 
@@ -19,16 +19,20 @@ No noise. No social features. Just your lifts and whether you're progressing.
 ## Features
 
 - **Custom split builder** — any pattern (PPL/Rest, Upper-Lower, 5-day, etc.), any number of days
-- **Per-exercise configuration** — sets, rep range (min–max), and your own weight increment (e.g. 2.5kg for compounds, 1kg for isolation)
+- **Preset splits** — 8 popular templates (PPL, Upper/Lower, Bro Split, Arnold Split, Full Body, and more)
+- **Per-exercise configuration** — sets, rep range (min–max), and your own weight increment
 - **Progressive overload detection** — fires after hitting your rep target on all sets, two sessions in a row
 - **Time to Ascend badge** — clear visual cue when it's time to add weight, with suggested weight pre-filled
 - **Streak dots** — two dots per exercise showing your current streak toward the ascend trigger
 - **Session history** — sparkline chart + last 6 sessions per exercise in the Progress tab
+- **kg / lbs toggle** — full unit conversion, all history auto-converts
+- **Draft autosave** — mid-workout inputs survive page reloads and alt-tab
 - **Dynamic sets** — add or remove sets mid-workout without affecting your saved program
 - **Exercise reordering** — ↑↓ arrows to reorder exercises within a day
+- **Day management** — add, delete, reorder days in your cycle
 - **Undo remove** — 4-second undo toast when removing an exercise from a day
-- **Cycle sync** — jump to any day in your cycle if it gets out of sync with real life
-- **Export / Import** — full JSON backup so your data is never locked in
+- **Cycle sync** — jump to any day in your cycle if it gets out of sync
+- **Export / Import** — full JSON backup via native share sheet or file download
 - **PWA** — installs to your home screen, works completely offline
 - **No account required** — all data stays on your device
 
@@ -39,13 +43,9 @@ No noise. No social features. Just your lifts and whether you're progressing.
 1. Fork or clone this repo
 2. Go to **Settings → Pages**
 3. Set source to **Deploy from branch → main → / (root)**
-4. Your app will be live at `https://yourusername.github.io/iron-log/`
+4. Your app will be live at `https://yourusername.github.io/seannylog/`
 
-That's it. No build step, no CI, no configuration.
-
-### Custom domain (optional)
-
-Add a `CNAME` file to the repo root containing your domain (e.g. `ironlog.app`) and configure your DNS per [GitHub's documentation](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site).
+No build step, no CI, no configuration.
 
 ### Installing as a PWA
 
@@ -60,7 +60,7 @@ After installing, the app runs offline — no internet needed at the gym.
 ## Files
 
 ```
-iron-log/
+seannylog/
 ├── index.html          # Entire app — HTML, CSS, and JS in one file
 ├── manifest.json       # PWA manifest
 ├── sw.js               # Service worker for offline support
@@ -69,33 +69,29 @@ iron-log/
 └── icon-512-maskable.png  # PWA icon (maskable, for Android adaptive icons)
 ```
 
-All five files must stay in the same directory for the PWA to install correctly.
+All files must stay in the same directory for the PWA to install correctly.
 
 ---
 
 ## Local development
 
-No build tools required. Just open `index.html` in a browser — or serve it locally for full PWA/service worker support:
+No build tools required. Serve locally for full PWA support:
 
 ```bash
 # Python 3
 python3 -m http.server 8080
 
-# Node (npx)
+# Node
 npx serve .
 ```
 
 Then open `http://localhost:8080`.
 
-> Service workers only register on `localhost` or HTTPS. If you open `index.html` directly via `file://`, the offline cache won't activate (but the app itself works fine).
-
 ---
 
 ## Data and privacy
 
-Everything is stored in your browser's `localStorage`. Nothing is sent anywhere. Clearing site data in your browser will wipe your history — use **Settings → Export backup** to keep a copy before doing so.
-
-The export produces a plain `.json` file you can back up anywhere or use to move your data to another device via **Settings → Import backup**.
+Everything is stored in your browser's `localStorage`. Nothing is sent anywhere. Use **Settings → Export backup** before clearing site data or switching devices. Import via **Settings → Import backup** to restore.
 
 ---
 
@@ -111,5 +107,3 @@ The export produces a plain `.json` file you can back up anywhere or use to move
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
-Feel free to fork, modify, and host your own version.

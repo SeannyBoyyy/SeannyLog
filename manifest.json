@@ -1,6 +1,6 @@
 {
-  "name": "Iron Log — Progressive Overload Tracker",
-  "short_name": "Iron Log",
+  "name": "SeannyLog — Progressive Overload Tracker",
+  "short_name": "SeannyLog",
   "description": "Log your lifts, follow your split, know exactly when it's time to add weight.",
   "start_url": "./index.html",
   "scope": "./",

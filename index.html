@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Iron Log — Progress Tracker</title>
-<meta name="description" content="A no-nonsense PWA for tracking progressive overload: log your split, see your last numbers, know exactly when to add weight.">
+<title>SeannyLog — Progressive Overload Tracker</title>
+<meta name="description" content="A no-nonsense PWA for tracking progressive overload. Log your split, see your last numbers, know exactly when to add weight.">
 <meta name="theme-color" content="#1C1B1A">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -226,7 +226,22 @@
     background:var(--iron-soft); border:1px solid var(--line); border-radius:var(--radius);
     padding:14px 16px; margin-bottom:10px;
   }
-  .day-card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .day-card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px; }
+  .day-reorder-col{ display:flex; flex-direction:column; gap:2px; flex:none; }
+  .day-arrow{ background:none; border:1px solid var(--line); color:var(--chalk-dim); font-size:11px; padding:2px 6px; line-height:1.3; border-radius:4px; }
+  .day-arrow:disabled{ opacity:0.2; pointer-events:none; }
+  .day-arrow:not(:disabled):active{ background:var(--iron-soft-2); color:var(--chalk); }
+  .day-grab{ display:flex; flex-direction:column; gap:2px; flex:none; cursor:grab; padding:4px 2px; }
+  .day-grab span{ display:block; width:16px; height:2px; background:var(--chalk-dim); border-radius:2px; }
+  .day-reorder-col{ display:flex; flex-direction:column; gap:2px; flex:none; }
+  .day-del-btn{ background:none; border:none; color:var(--chalk-dim); font-size:20px; line-height:1; padding:2px 8px; flex:none; opacity:0.5; }
+  .day-del-btn:active{ color:var(--rust); opacity:1; }
+  .day-num-badge{
+    font-family:var(--mono); font-size:10px; color:var(--chalk-dim);
+    background:var(--iron-soft-2); border:1px solid var(--line);
+    border-radius:20px; padding:3px 8px; flex:none; white-space:nowrap;
+  }
+  .day-num-badge.is-current{ background:rgba(193,87,42,0.18); border-color:var(--rust-dim); color:var(--rust); }
   .day-label-input{
     background:transparent; border:none; font-family:var(--display); font-size:17px;
     color:var(--chalk); padding:0; width:140px;
@@ -474,7 +489,7 @@
   <header class="app-header">
     <div class="brand">
       <div class="brand-mark"></div>
-      <div class="brand-name">Iron Log</div>
+      <div class="brand-name">SeannyLog</div>
     </div>
     <button class="icon-btn" id="btn-settings" aria-label="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -705,7 +720,7 @@ function load(){
     if(!parsed || !parsed.days || !parsed.exercises) return seedData();
     return parsed;
   }catch(e){
-    console.error('Iron Log: failed to load, reseeding', e);
+    console.error('SeannyLog: failed to load, reseeding', e);
     return seedData();
   }
 }
@@ -847,7 +862,7 @@ function getInstallHintHtml(){
   if(window.matchMedia('(display-mode: standalone)').matches) return '';
   if(localStorage.getItem(HINT_KEY)) return '';
   return `<div class="install-hint" id="install-hint">
-    Tip: open your browser menu and choose "Add to Home Screen" so Iron Log installs like an app.
+    Tip: open your browser menu and choose "Add to Home Screen" so SeannyLog installs like an app.
     <button id="dismiss-hint">Got it</button>
   </div>`;
 }
@@ -865,7 +880,7 @@ function getOnboardingHtml(){
   if(localStorage.getItem(ONBOARDING_KEY)) return '';
   return `<div class="onboarding-card" id="onboarding-card">
     <button class="onboarding-close" id="dismiss-onboarding" aria-label="Dismiss">×</button>
-    <p class="onboarding-title">How Iron Log works</p>
+    <p class="onboarding-title">How SeannyLog works</p>
     <p class="onboarding-body">
       Each session, log the <strong>weight and reps</strong> for every set.<br><br>
       Hit your top rep target on <strong>all sets, two sessions in a row</strong> at the same weight — the app tells you it's <strong>Time to Ascend</strong> and bumps the suggested weight up.<br><br>
@@ -1132,6 +1147,45 @@ function renderProgress(){
   });
 }
 
+const PRESETS = [
+  { name:'PPL Rest × 2',     desc:'8-day — the default, each muscle twice', days:['Push','Pull','Legs','Rest','Push','Pull','Legs','Rest'] },
+  { name:'PPL Rest',         desc:'4-day repeating cycle',                   days:['Push','Pull','Legs','Rest'] },
+  { name:'Upper / Lower',    desc:'6-day cycle with 2 rest days',            days:['Upper','Lower','Rest','Upper','Lower','Rest'] },
+  { name:'Push / Pull / Legs / Upper / Lower / Rest', desc:'7-day cycle — PPL then UL', days:['Push','Pull','Legs','Rest','Upper','Lower','Rest'] },
+  { name:'Push / Pull',      desc:'3-day repeating cycle',                   days:['Push','Pull','Rest'] },
+  { name:'Bro Split',        desc:'5-day — one muscle group per day',        days:['Chest','Back','Shoulders','Arms','Legs'] },
+  { name:'Arnold Split',     desc:'6-day — Chest+Back, Shoulders+Arms, Legs', days:['Chest & Back','Shoulders & Arms','Legs','Chest & Back','Shoulders & Arms','Legs'] },
+  { name:'Full Body × 3',   desc:'7-day — 3 full body sessions per week',   days:['Full Body','Rest','Full Body','Rest','Full Body','Rest','Rest'] },
+];
+
+function openPresetSheet(){
+  const rows = PRESETS.map(p => `
+    <button class="picker-item" style="display:block; text-align:left;" data-preset='${JSON.stringify(p.days).replace(/'/g,"&#39;")}'>
+      <div style="font-weight:600; margin-bottom:4px;">${escapeHtml(p.name)}</div>
+      <div style="font-family:var(--mono); font-size:10.5px; color:var(--chalk-dim); margin-bottom:4px;">${escapeHtml(p.desc)}</div>
+      <div style="font-family:var(--mono); font-size:10px; color:var(--steel);">${p.days.join(' → ')}</div>
+    </button>`).join('');
+  setSheet(`
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title">Load Preset</h2>
+    <p style="font-size:13px; color:var(--chalk-dim); margin:0 0 14px; line-height:1.5;">
+      Replaces your day structure. Your exercises stay in the library — reassign them to the new days after loading.
+    </p>
+    <div class="picker-list" style="max-height:420px;">${rows}</div>
+  `);
+  document.querySelectorAll('[data-preset]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const labels = JSON.parse(btn.dataset.preset);
+      if(!confirm(`Load "${labels.join(' / ')}"? This replaces your current days. Exercises stay in your library.`)) return;
+      state.days = labels.map(label => ({id:uid('day'), label, exerciseIds:[]}));
+      state.cycleIndex = 0;
+      save(); closeSheet(); splitSegment = 'days'; renderSplit(); renderToday();
+      toast('Preset loaded. Assign exercises to each day in the Days tab.');
+    });
+  });
+  openSheet();
+}
+
 /* ---------- rendering: split ---------- */
 function renderSplit(){
   const root = document.getElementById('view-split');
@@ -1142,8 +1196,14 @@ function renderSplit(){
   </div>`;
 
   if(splitSegment === 'days'){
-    html += `<div class="section-title" style="margin-top:0;">Your 8-Day Cycle</div>`;
+    html += `
+      <div style="display:flex; gap:8px; margin-bottom:14px;">
+        <button class="btn btn-ghost" id="btn-add-day" style="flex:1;">+ Add Day</button>
+        <button class="btn btn-outline" id="btn-load-preset" style="flex:1;">Load Preset</button>
+      </div>
+      <div class="section-title" style="margin-top:0;">Your ${state.days.length}-Day Cycle</div>`;
     state.days.forEach((day,i) => {
+      const isCurrent = i === state.cycleIndex;
       const exListHtml = day.exerciseIds.map((id, idx) => {
         const ex = state.exercises[id];
         if(!ex) return '';
@@ -1162,11 +1222,24 @@ function renderSplit(){
       html += `
         <div class="day-card" data-day="${day.id}">
           <div class="day-card-head">
-            <input class="day-label-input" value="${escapeHtml(day.label)}" data-day-label="${day.id}">
-            <span class="day-num">Day ${i+1}</span>
+            <div class="day-reorder-col">
+              <button class="day-arrow" data-day-up="${day.id}" data-idx="${i}" ${i===0?'disabled':''} aria-label="Move day up">↑</button>
+              <button class="day-arrow" data-day-down="${day.id}" data-idx="${i}" ${i===state.days.length-1?'disabled':''} aria-label="Move day down">↓</button>
+            </div>
+            <div style="flex:1; min-width:0;">
+              <input class="day-label-input" value="${escapeHtml(day.label)}" data-day-label="${day.id}" style="width:100%;">
+            </div>
+            <span class="day-num-badge ${isCurrent?'is-current':''}">
+              ${isCurrent ? '▶ Day '+(i+1) : 'Day '+(i+1)}
+            </span>
           </div>
           <div class="day-ex-list">${exListHtml}</div>
-          <button class="chip chip-add" data-add-day="${day.id}">+ Exercise</button>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:4px;">
+            <button class="chip chip-add" data-add-day="${day.id}" style="flex:1;">+ Exercise</button>
+            <button class="day-del-btn" data-delete-day="${day.id}" aria-label="Delete day">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"></path></svg>
+            </button>
+          </div>
         </div>`;
     });
   } else {
@@ -1220,6 +1293,51 @@ function wireSplitView(root){
       if(day){ day.label = input.value.trim() || 'Day'; save(); }
     });
   });
+  // reorder days
+  root.querySelectorAll('[data-day-up]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      if(idx <= 0) return;
+      [state.days[idx-1], state.days[idx]] = [state.days[idx], state.days[idx-1]];
+      if(state.cycleIndex === idx) state.cycleIndex = idx-1;
+      else if(state.cycleIndex === idx-1) state.cycleIndex = idx;
+      save(); renderSplit(); safeRenderToday();
+    });
+  });
+  root.querySelectorAll('[data-day-down]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      if(idx >= state.days.length-1) return;
+      [state.days[idx], state.days[idx+1]] = [state.days[idx+1], state.days[idx]];
+      if(state.cycleIndex === idx) state.cycleIndex = idx+1;
+      else if(state.cycleIndex === idx+1) state.cycleIndex = idx;
+      save(); renderSplit(); safeRenderToday();
+    });
+  });
+  // delete day
+  root.querySelectorAll('[data-delete-day]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(state.days.length <= 1){ toast("Can't delete the last day."); return; }
+      const day = state.days.find(d => d.id === btn.dataset.deleteDay);
+      if(!day) return;
+      if(!confirm(`Delete "${day.label}"? Exercises stay in your library.`)) return;
+      const idx = state.days.indexOf(day);
+      state.days = state.days.filter(d => d.id !== day.id);
+      state.cycleIndex = Math.min(state.cycleIndex, state.days.length-1);
+      save(); renderSplit(); safeRenderToday();
+      toast(`"${day.label}" removed from cycle.`);
+    });
+  });
+  // add day
+  const addDayBtn = document.getElementById('btn-add-day');
+  if(addDayBtn) addDayBtn.addEventListener('click', () => {
+    state.days.push({id:uid('day'), label:'Day', exerciseIds:[]});
+    save(); renderSplit();
+    toast('New day added. Tap the name to rename it.');
+  });
+  // load preset
+  const loadPresetBtn = document.getElementById('btn-load-preset');
+  if(loadPresetBtn) loadPresetBtn.addEventListener('click', openPresetSheet);
   root.querySelectorAll('[data-remove-ex]').forEach(btn => {
     btn.addEventListener('click', () => {
       const day = state.days.find(d => d.id === btn.dataset.day);
@@ -1633,15 +1751,15 @@ async function exportData(){
       // Check if sharing files is supported
       if(navigator.canShare && navigator.canShare({files:[file]})){
         await navigator.share({
-          title: 'Iron Log Backup',
-          text: 'Iron Log workout data backup',
+          title: 'SeannyLog Backup',
+          text: 'SeannyLog workout data backup',
           files: [file]
         });
         return;
       }
       // Fallback: share as text (copies-friendly for notes/whatsapp)
       await navigator.share({
-        title: 'Iron Log Backup',
+        title: 'SeannyLog Backup',
         text: json
       });
       return;
@@ -1669,7 +1787,7 @@ function parseAndRestoreBackup(json){
     toast('Backup restored.');
     return true;
   }catch(err){
-    toast("That doesn't look like a valid Iron Log backup.");
+    toast("That doesn't look like a valid SeannyLog backup.");
     return false;
   }
 }
@@ -1700,7 +1818,7 @@ function openImportSheet(){
       <div style="flex:1; height:1px; background:var(--line);"></div>
     </div>
     <label class="field-label" style="margin-top:0;">Paste backup text</label>
-    <textarea id="imp-paste" rows="5" placeholder="Paste your Iron Log backup JSON here..."
+    <textarea id="imp-paste" rows="5" placeholder="Paste your SeannyLog backup JSON here..."
       style="width:100%; background:var(--iron); border:1px solid var(--line); border-radius:9px;
              padding:11px 12px; font-size:12px; color:var(--chalk); font-family:var(--mono);
              resize:none; line-height:1.5;"></textarea>
