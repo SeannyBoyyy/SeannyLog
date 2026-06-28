@@ -226,16 +226,13 @@
     background:var(--iron-soft); border:1px solid var(--line); border-radius:var(--radius);
     padding:14px 16px; margin-bottom:10px;
   }
-  .day-card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px; }
-  .day-reorder-col{ display:flex; flex-direction:column; gap:2px; flex:none; }
-  .day-arrow{ background:none; border:1px solid var(--line); color:var(--chalk-dim); font-size:11px; padding:2px 6px; line-height:1.3; border-radius:4px; }
-  .day-arrow:disabled{ opacity:0.2; pointer-events:none; }
-  .day-arrow:not(:disabled):active{ background:var(--iron-soft-2); color:var(--chalk); }
-  .day-grab{ display:flex; flex-direction:column; gap:2px; flex:none; cursor:grab; padding:4px 2px; }
-  .day-grab span{ display:block; width:16px; height:2px; background:var(--chalk-dim); border-radius:2px; }
-  .day-reorder-col{ display:flex; flex-direction:column; gap:2px; flex:none; }
-  .day-del-btn{ background:none; border:none; color:var(--chalk-dim); font-size:20px; line-height:1; padding:2px 8px; flex:none; opacity:0.5; }
-  .day-del-btn:active{ color:var(--rust); opacity:1; }
+  .day-card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px; cursor:pointer; }
+  .day-chevron{ color:var(--chalk-dim); font-size:14px; flex:none; transition:transform 200ms; display:inline-block; }
+  .day-card.collapsed .day-chevron{ transform:rotate(-90deg); }
+  .day-collapsed-hint{ display:none; font-family:var(--mono); font-size:11px; color:var(--chalk-dim); padding:4px 0 8px; }
+  .day-card.collapsed .day-collapsed-hint{ display:block; }
+  .day-card-body{ }
+  .day-card.collapsed .day-card-body{ display:none; }
   .day-num-badge{
     font-family:var(--mono); font-size:10px; color:var(--chalk-dim);
     background:var(--iron-soft-2); border:1px solid var(--line);
@@ -546,6 +543,7 @@ const HINT_KEY = 'ironlog.hint.dismissed';
 const DRAFT_KEY = 'ironlog.draft';
 const UNIT_KEY = 'ironlog.unit';
 let splitSegment = 'days';
+let collapsedDays = null; // null = not yet initialized; Set of day IDs when ready
 
 /* ---------- unit helpers ---------- */
 const KG_TO_LBS = 2.20462;
@@ -1009,7 +1007,7 @@ function wireTodayDelegation(){
       row.className = 'set-row';
       row.innerHTML = `
         <span class="set-row-label">${nextIdx+1}</span>
-        <input class="set-input unit" type="text" inputmode="decimal" placeholder="kg" value="${escapeHtml(String(prefill))}" id="set-w-${exId}-${nextIdx}">
+        <input class="set-input unit" type="text" inputmode="decimal" placeholder="${unitLabel()}" value="${escapeHtml(String(prefill))}" id="set-w-${exId}-${nextIdx}">
         <span class="set-x">×</span>
         <input class="set-input" type="text" inputmode="numeric" placeholder="reps" id="set-r-${exId}-${nextIdx}">
       `;
@@ -1057,8 +1055,6 @@ function renderToday(){
         <p>Recovery is part of the program. Sleep, eat, hydrate — back under the bar next session.</p>
         <button class="btn btn-primary" id="btn-finish-rest">Mark Done → Next: ${escapeHtml(nextDay.label)}</button>
       </div>`;
-    wireInstallHint();
-    wireOnboarding();
     if(!todayWired){ wireTodayDelegation(); todayWired = true; }
     return;
   }
@@ -1076,10 +1072,7 @@ function renderToday(){
     <div class="finish-bar">
       <button class="btn btn-primary" id="btn-finish">Finish Workout</button>
     </div>`;
-  wireInstallHint();
-  wireOnboarding();
   if(!todayWired){ wireTodayDelegation(); todayWired = true; }
-  // restore any mid-workout draft saved before page reload
   const restored = restoreDraft();
   if(restored) toast('Draft restored — your inputs are back.');
 }
@@ -1193,6 +1186,7 @@ function openPresetSheet(){
       if(!confirm(`Load "${labels.join(' / ')}"? This replaces your current days. Exercises stay in your library.`)) return;
       state.days = labels.map(label => ({id:uid('day'), label, exerciseIds:[]}));
       state.cycleIndex = 0;
+      collapsedDays = null; // reset so next render re-initializes with current day expanded
       save(); closeSheet(); splitSegment = 'days'; renderSplit(); renderToday();
       toast('Preset loaded. Assign exercises to each day in the Days tab.');
     });
@@ -1259,8 +1253,15 @@ function renderSplit(){
         <button class="btn btn-outline" id="btn-load-preset" style="flex:1; font-size:12px; color:var(--chalk-dim);">Load Preset</button>
       </div>
       <div class="section-title" style="margin-top:0;">Your ${state.days.length}-Day Cycle</div>`;
+    // init collapsed state: all days collapsed except current, on first render
+    if(collapsedDays === null){
+      collapsedDays = new Set(state.days.map(d=>d.id));
+      collapsedDays.delete(state.days[state.cycleIndex]?.id);
+    }
+
     state.days.forEach((day,i) => {
       const isCurrent = i === state.cycleIndex;
+      const isCollapsed = collapsedDays.has(day.id);
       const exListHtml = day.exerciseIds.map((id, idx) => {
         const ex = state.exercises[id];
         if(!ex) return '';
@@ -1276,19 +1277,24 @@ function renderSplit(){
             <button class="day-ex-remove" data-remove-ex="${id}" data-day="${day.id}" aria-label="Remove">×</button>
           </div>`;
       }).join('');
+      const exCount = day.exerciseIds.length;
       html += `
-        <div class="day-card" data-day="${day.id}">
-          <div class="day-card-head">
+        <div class="day-card ${isCollapsed?'collapsed':''}" data-day="${day.id}">
+          <div class="day-card-head" data-toggle-day="${day.id}">
             <div style="flex:1; min-width:0;">
               <input class="day-label-input" value="${escapeHtml(day.label)}" data-day-label="${day.id}" style="width:100%;">
             </div>
             <span class="day-num-badge ${isCurrent?'is-current':''}">
               ${isCurrent ? '▶ Day '+(i+1) : 'Day '+(i+1)}
             </span>
+            <span class="day-chevron">▾</span>
           </div>
-          <div class="day-ex-list">${exListHtml}</div>
-          <button class="chip chip-add" data-add-day="${day.id}" style="width:100%; margin-top:4px;">+ Exercise</button>
-          ${state.days.length > 1 ? '<button data-delete-day="' + day.id + '" style="width:100%; background:none; border:none; color:var(--chalk-dim); font-family:var(--mono); font-size:11px; padding:10px 4px 2px; cursor:pointer; opacity:0.5;" aria-label="Delete day">delete this day</button>' : ''}
+          <div class="day-collapsed-hint">${exCount} exercise${exCount!==1?'s':''}</div>
+          <div class="day-card-body">
+            <div class="day-ex-list">${exListHtml}</div>
+            <button class="chip chip-add" data-add-day="${day.id}" style="width:100%; margin-top:4px;">+ Exercise</button>
+            ${state.days.length > 1 ? '<button data-delete-day="' + day.id + '" style="width:100%; background:none; border:none; color:var(--chalk-dim); font-family:var(--mono); font-size:11px; padding:10px 4px 2px; cursor:pointer; opacity:0.5;" aria-label="Delete day">delete this day</button>' : ''}
+          </div>
         </div>`;
     });
   } else {
@@ -1355,10 +1361,27 @@ function wireSplitView(root){
       toast(`"${day.label}" removed from cycle.`);
     });
   });
-  // add day
+  // toggle collapse on day card header tap
+  root.querySelectorAll('[data-toggle-day]').forEach(head => {
+    head.addEventListener('click', (e) => {
+      if(e.target.classList.contains('day-label-input')) return; // let name input work normally
+      const dayId = head.dataset.toggleDay;
+      const card = head.closest('.day-card');
+      if(collapsedDays.has(dayId)){
+        collapsedDays.delete(dayId);
+        card.classList.remove('collapsed');
+      } else {
+        collapsedDays.add(dayId);
+        card.classList.add('collapsed');
+      }
+    });
+  });
+  // add day — starts expanded
   const addDayBtn = document.getElementById('btn-add-day');
   if(addDayBtn) addDayBtn.addEventListener('click', () => {
-    state.days.push({id:uid('day'), label:'Day', exerciseIds:[]});
+    const newDay = {id:uid('day'), label:'Day', exerciseIds:[]};
+    state.days.push(newDay);
+    if(collapsedDays) collapsedDays.delete(newDay.id); // start expanded
     save(); renderSplit();
     toast('New day added. Tap the name to rename it.');
   });
@@ -1399,8 +1422,12 @@ function wireSplitView(root){
       const day = state.days.find(d => d.id === btn.dataset.day);
       const idx = parseInt(btn.dataset.idx, 10);
       if(day && idx > 0){
+        const exId1 = day.exerciseIds[idx-1];
+        const exId2 = day.exerciseIds[idx];
         [day.exerciseIds[idx-1], day.exerciseIds[idx]] = [day.exerciseIds[idx], day.exerciseIds[idx-1]];
         save(); renderSplit();
+        const isCurrentDay = day.id === state.days[state.cycleIndex]?.id;
+        if(isCurrentDay){ todayIsDirty() ? swapTodayCards(exId1, exId2) : renderToday(); }
       }
     });
   });
@@ -1409,8 +1436,12 @@ function wireSplitView(root){
       const day = state.days.find(d => d.id === btn.dataset.day);
       const idx = parseInt(btn.dataset.idx, 10);
       if(day && idx < day.exerciseIds.length - 1){
+        const exId1 = day.exerciseIds[idx];
+        const exId2 = day.exerciseIds[idx+1];
         [day.exerciseIds[idx], day.exerciseIds[idx+1]] = [day.exerciseIds[idx+1], day.exerciseIds[idx]];
         save(); renderSplit();
+        const isCurrentDay = day.id === state.days[state.cycleIndex]?.id;
+        if(isCurrentDay){ todayIsDirty() ? swapTodayCards(exId1, exId2) : renderToday(); }
       }
     });
   });
@@ -1735,7 +1766,7 @@ function openSettings(){
   });
   document.getElementById('btn-reset').addEventListener('click', () => {
     if(confirm('This wipes everything and cannot be undone. Continue?')){
-      state = seedData(); save(); closeSheet(); renderAll();
+      state = seedData(); collapsedDays = null; save(); closeSheet(); renderAll();
       toast('Reset complete.');
     }
   });
@@ -1764,6 +1795,7 @@ function openDayPicker(){
     const picked = document.querySelector('input[name="day-pick"]:checked');
     if(!picked) return;
     state.cycleIndex = parseInt(picked.value, 10);
+    if(collapsedDays) collapsedDays.delete(state.days[state.cycleIndex]?.id);
     save(); closeSheet(); renderToday(); renderSplit();
     toast(`Cycle set to Day ${state.cycleIndex+1} — ${state.days[state.cycleIndex].label}.`);
   });
@@ -1772,7 +1804,7 @@ function openDayPicker(){
 
 async function exportData(){
   const json = JSON.stringify(state, null, 2);
-  const filename = `iron-log-backup-${todayISO()}.json`;
+  const filename = `seannylog-backup-${todayISO()}.json`;
 
   // Try Web Share API first (iOS Safari, Android Chrome — opens native share sheet)
   if(navigator.share){
@@ -1820,15 +1852,6 @@ function parseAndRestoreBackup(json){
     toast("That doesn't look like a valid SeannyLog backup.");
     return false;
   }
-}
-
-function importData(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => parseAndRestoreBackup(reader.result);
-  reader.readAsText(file);
-  e.target.value = '';
 }
 
 function openImportSheet(){
@@ -1909,6 +1932,19 @@ function todayIsDirty(){
 }
 function safeRenderToday(){
   if(!todayIsDirty()) renderToday();
+}
+
+/* swap two exercise cards in Today's DOM without wiping any inputs */
+function swapTodayCards(exId1, exId2){
+  const today = document.getElementById('view-today');
+  const c1 = today.querySelector(`.ex-card[data-ex="${exId1}"]`);
+  const c2 = today.querySelector(`.ex-card[data-ex="${exId2}"]`);
+  if(!c1 || !c2 || c1.parentNode !== c2.parentNode) return;
+  const anchor = document.createComment('swap');
+  c1.parentNode.insertBefore(anchor, c1);
+  c2.parentNode.insertBefore(c1, c2);
+  anchor.parentNode.insertBefore(c2, anchor);
+  anchor.parentNode.removeChild(anchor);
 }
 function switchView(view){
   document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
