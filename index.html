@@ -210,6 +210,7 @@
     padding:14px 16px; margin-bottom:10px;
   }
   .progress-card-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; }
+  .progress-card-body.hidden{ display:none; }
   .progress-stats{ display:flex; gap:16px; margin-top:12px; }
   .stat{ flex:1; }
   .stat-label{ font-family:var(--mono); font-size:10.5px; color:var(--chalk-dim); text-transform:uppercase; letter-spacing:0.06em; }
@@ -219,6 +220,8 @@
   .history-table th{ text-align:left; color:var(--chalk-dim); font-weight:500; padding:4px 6px; border-bottom:1px solid var(--line); }
   .history-table td{ padding:6px 6px; border-bottom:1px solid var(--line); }
   .history-table tr:last-child td{ border-bottom:none; }
+  .session-del-btn{ background:none; border:none; color:var(--chalk-dim); opacity:0.5; font-size:16px; padding:0 4px; cursor:pointer; line-height:1; }
+  .session-del-btn:active{ color:var(--rust); opacity:1; }
   .empty-note{ color:var(--chalk-dim); font-size:13px; padding:20px 4px; text-align:center; line-height:1.5; }
 
   /* ---------- split view ---------- */
@@ -384,6 +387,38 @@
   }
   .picker-item span.muscle{ color:var(--steel); font-family:var(--mono); font-size:11px; }
   .picker-item.added{ opacity:0.4; }
+
+  .heatmap-card{
+    background:var(--iron-soft); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; margin-bottom:20px;
+  }
+  .heatmap-title{
+    font-family:var(--display); font-size:12px; text-transform:uppercase;
+    letter-spacing:0.08em; color:var(--chalk-dim); margin:0 0 12px;
+  }
+  .heatmap-stats{
+    display:flex; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--line);
+  }
+  .hstat{ flex:1; text-align:center; }
+  .hstat-val{ font-family:var(--display); font-size:22px; color:var(--chalk); line-height:1; }
+  .hstat-label{
+    font-family:var(--mono); font-size:10px; color:var(--chalk-dim);
+    text-transform:uppercase; letter-spacing:0.04em; margin-top:4px;
+  }
+  .heatmap-scroll-wrap{ position:relative; }
+  .heatmap-scroll{ overflow-x:auto; padding-bottom:4px; }
+  .heatmap-scroll::-webkit-scrollbar{ height:3px; }
+  .heatmap-scroll::-webkit-scrollbar-track{ background:transparent; }
+  .heatmap-scroll::-webkit-scrollbar-thumb{ background:var(--iron-soft-2); border-radius:2px; }
+  .heatmap-fade{
+    position:absolute; top:0; right:0; bottom:4px; width:22px;
+    background:linear-gradient(90deg, transparent, var(--iron-soft) 85%);
+    pointer-events:none;
+  }
+  .heatmap-scroll-hint{
+    font-family:var(--mono); font-size:10px; color:var(--chalk-dim);
+    text-align:right; margin-top:6px; opacity:0.7;
+  }
 
   .settings-row{
     display:flex; justify-content:space-between; align-items:center;
@@ -551,11 +586,12 @@ function getUnit(){ return localStorage.getItem(UNIT_KEY) || 'kg'; }
 function setUnit(u){ localStorage.setItem(UNIT_KEY, u); }
 function toDisplay(kg){
   const n = Number(kg); if(!isFinite(n)) return 0;
-  return getUnit()==='lbs' ? Math.round(n*KG_TO_LBS*4)/4 : n;
+  return getUnit()==='lbs' ? Math.round(n*KG_TO_LBS*4)/4 : Math.round(n*100)/100;
 }
 function toKg(val){
   const n = Number(val); if(!isFinite(n)) return 0;
-  return getUnit()==='lbs' ? +(n/KG_TO_LBS).toFixed(4) : n;
+  const kg = getUnit()==='lbs' ? (n/KG_TO_LBS) : n;
+  return Math.round(kg*100)/100;
 }
 function unitLabel(){ return getUnit(); }
 function incrDefault(){ return getUnit()==='lbs' ? 5 : 2.5; }
@@ -745,7 +781,7 @@ function save(){
 function exerciseLogsInOrder(exId){
   return state.logs
     .filter(l => l.entries && l.entries[exId] && l.entries[exId].length)
-    .map(l => ({date:l.date, sets:l.entries[exId]}))
+    .map(l => ({id:l.id, date:l.date, sets:l.entries[exId]}))
     .sort((a,b) => a.date.localeCompare(b.date));
 }
 
@@ -903,6 +939,26 @@ function wireInstallHint(){
 }
 
 const ONBOARDING_KEY = 'ironlog.onboarding';
+const PROGRESS_HINT_KEY = 'ironlog.progress.hint.dismissed';
+
+function getProgressHintHtml(){
+  if(localStorage.getItem(PROGRESS_HINT_KEY)) return '';
+  return `<div class="onboarding-card" id="progress-hint-card">
+    <button class="onboarding-close" id="dismiss-progress-hint" aria-label="Dismiss">×</button>
+    <p class="onboarding-title">Reading these cards</p>
+    <p class="onboarding-body">
+      <strong>Logged</strong> = total times you've recorded this exercise, any reps.<br><br>
+      The <strong>●● dots</strong> only count sessions that hit your full rep target on every set — that's what triggers Time to Ascend.
+    </p>
+  </div>`;
+}
+function wireProgressHint(){
+  const btn = document.getElementById('dismiss-progress-hint');
+  if(btn) btn.addEventListener('click', () => {
+    localStorage.setItem(PROGRESS_HINT_KEY, '1');
+    document.getElementById('progress-hint-card')?.remove();
+  });
+}
 
 function getOnboardingHtml(){
   if(localStorage.getItem(ONBOARDING_KEY)) return '';
@@ -929,7 +985,7 @@ function renderExerciseCard(ex){
   const status = getProgressionStatus(ex.id);
   const lastSets = status.lastSession ? status.lastSession.sets : null;
   const dotsHtml = [0,1].map(i => `<span class="streak-dot ${i < status.streak ? 'filled':''}"></span>`).join('');
-  const streakLabel = status.ready ? 'add weight!' : `${status.streak}/2 sessions`;
+  const streakLabel = status.ready ? 'add weight!' : `${status.streak}/2`;
   const badgeHtml = status.ready ? `
     <div class="ascend-badge">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
@@ -950,8 +1006,10 @@ function renderExerciseCard(ex){
       </div>`;
   }).join('');
 
+  const minLastReps = lastSets ? Math.min(...lastSets.map(s=>s.reps)) : null;
+  const fellShort = !status.ready && lastSets && minLastReps < ex.repMax;
   const lastLine = lastSets
-    ? `Last: ${lastSets.map(s => `${formatWeight(toDisplay(s.weight))}${unitLabel()} × ${s.reps}`).join(' · ')}`
+    ? `Last: ${lastSets.map(s => `${formatWeight(toDisplay(s.weight))}${unitLabel()} × ${s.reps}`).join(' · ')}${fellShort ? ` — need ${ex.repMax} reps on every set to count` : ''}`
     : `No history yet — target ${ex.repMin}–${ex.repMax} reps`;
 
   const lastWeight = (lastSets && lastSets.length) ? formatWeight(toDisplay(lastSets[lastSets.length-1].weight)) : '';
@@ -960,7 +1018,7 @@ function renderExerciseCard(ex){
       <div class="ex-card-top">
         <div>
           <div class="ex-name">${escapeHtml(ex.name)}</div>
-          <div class="ex-meta"><span class="ex-muscle-tag">${ex.muscle}</span> · ${ex.repMin}–${ex.repMax} reps</div>
+          <div class="ex-meta"><span class="ex-muscle-tag">${ex.muscle}</span> · ${ex.repMin}–${ex.repMax} reps · ${ex.repMax} to ascend</div>
         </div>
         <div class="streak-wrap">
           <div class="streak-dots">${dotsHtml}</div>
@@ -1093,7 +1151,189 @@ function renderToday(){
   if(restored) toast('Draft restored — your inputs are back.');
 }
 
+/* ---------- rendering: heatmap ---------- */
+function renderHeatmap(){
+  const WEEKS = 26, C = 12, G = 2, DLW = 16;
+
+  // date → exercise count
+  const logsByDate = {};
+  state.logs.forEach(log => {
+    const d = log.date.slice(0,10);
+    const n = log.entries ? Object.keys(log.entries).length : 1;
+    logsByDate[d] = (logsByDate[d]||0) + n;
+  });
+
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0,10);
+
+  // grid starts Sunday of the week 25 weeks ago (matches GitHub's layout exactly)
+  const dow = today.getDay(); // 0=Sun ... 6=Sat
+  const thisSunday = new Date(today);
+  thisSunday.setDate(today.getDate()-dow);
+  const start = new Date(thisSunday);
+  start.setDate(thisSunday.getDate()-(WEEKS-1)*7);
+
+  // build weeks
+  const weeks = [];
+  const cur = new Date(start);
+  for(let w=0;w<WEEKS;w++){
+    const week=[];
+    for(let d=0;d<7;d++){
+      const ds=cur.toISOString().slice(0,10);
+      week.push({ds, count:logsByDate[ds]||0, isToday:ds===todayStr, isFuture:cur>today});
+      cur.setDate(cur.getDate()+1);
+    }
+    weeks.push(week);
+  }
+
+  // month labels
+  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const mLabels=[]; let lastM=-1;
+  weeks.forEach((wk,wi)=>{
+    const m=parseInt(wk[0].ds.slice(5,7))-1;
+    if(m!==lastM){ mLabels.push({wi,label:MON[m]}); lastM=m; }
+  });
+
+  // stats
+  const total = state.logs.length;
+  const thisM = today.toISOString().slice(0,7);
+  const thisMonthCount = state.logs.filter(l=>l.date.slice(0,7)===thisM).length;
+
+  // current streak (consecutive logged days going back)
+  let streak=0;
+  const sc=new Date(today);
+  if(!logsByDate[todayStr]) sc.setDate(sc.getDate()-1);
+  while(true){
+    const ds=sc.toISOString().slice(0,10);
+    if(logsByDate[ds]){streak++;sc.setDate(sc.getDate()-1);}
+    else break;
+  }
+
+  // longest streak
+  const sorted=Object.keys(logsByDate).sort();
+  let longest=0,run=0,prev='';
+  sorted.forEach(ds=>{
+    const diff=prev?((new Date(ds)-new Date(prev))/86400000):0;
+    run=(!prev||diff!==1)?1:run+1;
+    longest=Math.max(longest,run); prev=ds;
+  });
+
+  // cell color
+  function cc(count,isFuture){
+    if(isFuture) return 'transparent';
+    if(!count) return '#433E37';
+    if(count<=2) return 'rgba(193,87,42,0.32)';
+    if(count<=4) return 'rgba(193,87,42,0.64)';
+    return '#C1572A';
+  }
+
+  // SVG dimensions
+  const svgW = DLW + WEEKS*(C+G);
+  const svgH = 14 + 7*(C+G);
+
+  let svg=`<svg viewBox="0 0 ${svgW} ${svgH+18}" width="${svgW}" xmlns="http://www.w3.org/2000/svg" style="display:block;">`;
+
+  // month labels
+  mLabels.forEach(({wi,label})=>{
+    if(wi===0) return; // skip if first week might be cut off
+    const x=DLW+wi*(C+G);
+    svg+=`<text x="${x}" y="10" font-family="IBM Plex Mono,monospace" font-size="9" fill="#A39E94">${label}</text>`;
+  });
+
+  // day labels M W F
+  [{d:1,l:'M'},{d:3,l:'W'},{d:5,l:'F'}].forEach(({d,l})=>{
+    const y=14+d*(C+G)+C*0.78;
+    svg+=`<text x="0" y="${y}" font-family="IBM Plex Mono,monospace" font-size="9" fill="#A39E94">${l}</text>`;
+  });
+
+  // cells
+  weeks.forEach((wk,wi)=>{
+    wk.forEach((cell,di)=>{
+      const x=DLW+wi*(C+G), y=14+di*(C+G);
+      const fill=cc(cell.count,cell.isFuture);
+      const stroke=cell.isToday?'#EDEAE3':'none';
+      if(cell.isFuture){
+        svg+=`<rect x="${x}" y="${y}" width="${C}" height="${C}" rx="2.5" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`;
+      } else {
+        svg+=`<rect class="hm-cell" data-date="${cell.ds}" data-count="${cell.count}" x="${x}" y="${y}" width="${C}" height="${C}" rx="2.5" fill="${fill}" stroke="${stroke}" stroke-width="1.5" style="cursor:pointer;"/>`;
+      }
+    });
+  });
+
+  // legend
+  const ly=svgH+6, lx=svgW-4*(C+G)-38;
+  svg+=`<text x="${lx}" y="${ly+9}" font-family="IBM Plex Mono,monospace" font-size="9" fill="#A39E94">Less</text>`;
+  ['#433E37','rgba(193,87,42,0.32)','rgba(193,87,42,0.64)','#C1572A'].forEach((col,i)=>{
+    svg+=`<rect x="${lx+30+i*(C+G)}" y="${ly}" width="${C}" height="${C}" rx="2.5" fill="${col}"/>`;
+  });
+  svg+=`<text x="${lx+30+4*(C+G)+2}" y="${ly+9}" font-family="IBM Plex Mono,monospace" font-size="9" fill="#A39E94">More</text>`;
+  svg+='</svg>';
+
+  return `
+    <div class="heatmap-card">
+      <p class="heatmap-title">Consistency — last 26 weeks</p>
+      <div class="heatmap-stats">
+        <div class="hstat"><div class="hstat-val">${total}</div><div class="hstat-label">Total</div></div>
+        <div class="hstat"><div class="hstat-val">${thisMonthCount}</div><div class="hstat-label">This month</div></div>
+        <div class="hstat"><div class="hstat-val">${streak}</div><div class="hstat-label">Streak</div></div>
+        <div class="hstat"><div class="hstat-val">${longest}</div><div class="hstat-label">Best streak</div></div>
+      </div>
+      <div class="heatmap-scroll-wrap">
+        <div class="heatmap-scroll" id="heatmap-scroll-el">${svg}</div>
+        <div class="heatmap-fade"></div>
+      </div>
+      <p class="heatmap-scroll-hint">← swipe for earlier weeks</p>
+    </div>`;
+}
+
 /* ---------- rendering: progress ---------- */
+function openEditSessionSheet(logId, exId){
+  const log = state.logs.find(l => l.id === logId);
+  const ex = state.exercises[exId];
+  if(!log || !ex || !log.entries[exId]){ toast('Could not find that session.'); return; }
+  const sets = log.entries[exId];
+
+  function render(){
+    const rows = sets.map((s,i) => `
+      <div class="set-row" style="margin-bottom:8px;">
+        <span class="set-row-label">${i+1}</span>
+        <input class="set-input unit" type="text" inputmode="decimal" value="${formatWeight(toDisplay(s.weight))}" id="edit-w-${i}">
+        <span class="set-x">×</span>
+        <input class="set-input" type="text" inputmode="numeric" value="${s.reps}" id="edit-r-${i}">
+      </div>`).join('');
+    setSheet(`
+      <div class="sheet-handle"></div>
+      <h2 class="sheet-title">Edit Session</h2>
+      <p style="font-size:13px; color:var(--chalk-dim); margin:0 0 2px;">${escapeHtml(ex.name)}</p>
+      <p style="font-family:var(--mono); font-size:11px; color:var(--steel); margin:0 0 16px;">${formatDate(log.date)} — date won't change</p>
+      ${rows}
+      <button class="btn btn-primary" id="edit-save" style="margin-top:10px;">Save Changes</button>
+    `);
+    document.getElementById('edit-save').addEventListener('click', () => {
+      const newSets = [];
+      for(let i=0;i<sets.length;i++){
+        const w = document.getElementById(`edit-w-${i}`);
+        const r = document.getElementById(`edit-r-${i}`);
+        const wv = parseFloat(w.value);
+        const rv = parseInt(r.value,10);
+        if(isNaN(wv) || isNaN(rv) || wv<=0 || rv<=0){ toast('Enter a valid weight and reps for every set.'); return; }
+        newSets.push({weight: toKg(wv), reps: rv});
+      }
+      const maxKg = 300;
+      const bad = newSets.filter(s => s.weight > maxKg);
+      if(bad.length){
+        const msg = `These weights look unusually high — possible typo?\n\n${bad.map(s=>formatWeight(toDisplay(s.weight))+unitLabel()).join(', ')}\n\nSave anyway?`;
+        if(!confirm(msg)) return;
+      }
+      log.entries[exId] = newSets;
+      save(); closeSheet(); renderProgress();
+      toast('Session updated — date unchanged.');
+    });
+  }
+  render();
+  openSheet();
+}
+
 function renderProgressCard(ex){
   const history = exerciseLogsInOrder(ex.id);
   const status = getProgressionStatus(ex.id);
@@ -1114,9 +1354,18 @@ function renderProgressCard(ex){
   const last = history[history.length-1];
   const bestWeight = Math.max(...history.map(h => Math.max(...h.sets.map(s=>s.weight))));
   const spark = sparklineSvg(history.map(h => toDisplay(Math.max(...h.sets.map(s=>s.weight)))));
-  const rows = history.slice(-6).reverse().map(h =>
-    `<tr><td>${formatDate(h.date)}</td><td>${h.sets.map(s=>`${formatWeight(toDisplay(s.weight))}${unitLabel()}×${s.reps}`).join(', ')}</td></tr>`
-  ).join('');
+  const rows = history.slice(-6).reverse().map(h => {
+    const log = state.logs.find(l => l.id === h.id);
+    const dayLabel = state.days.find(d => d.id === log?.dayId)?.label || 'Session';
+    const exCount = Object.keys(log?.entries||{}).length;
+    return `<tr>
+      <td>${formatDate(h.date)}</td>
+      <td data-edit-log="${h.id}" data-edit-ex="${ex.id}" style="cursor:pointer;">${h.sets.map(s=>`${formatWeight(toDisplay(s.weight))}${unitLabel()}×${s.reps}`).join(', ')} <span style="opacity:0.45;">✎</span></td>
+      <td style="text-align:right; white-space:nowrap;">
+        <button class="session-del-btn" data-log-id="${h.id}" data-day-label="${escapeHtml(dayLabel)}" data-ex-count="${exCount}" data-date="${formatDate(h.date)}" aria-label="Delete session">×</button>
+      </td>
+    </tr>`;
+  }).join('');
 
   return `
     <div class="progress-card" data-ex="${ex.id}">
@@ -1134,7 +1383,7 @@ function renderProgressCard(ex){
         <div class="progress-stats">
           <div class="stat"><div class="stat-label">Best</div><div class="stat-value">${formatWeight(toDisplay(bestWeight))} <span style="font-size:12px;color:var(--chalk-dim)">${unitLabel()}</span></div></div>
           <div class="stat"><div class="stat-label">Last</div><div class="stat-value">${formatWeight(toDisplay(last.sets[0].weight))} <span style="font-size:12px;color:var(--chalk-dim)">${unitLabel()}</span></div></div>
-          <div class="stat"><div class="stat-label">Sessions</div><div class="stat-value">${history.length}</div></div>
+          <div class="stat"><div class="stat-label">Logged</div><div class="stat-value">${history.length}</div></div>
         </div>
         <div class="spark-wrap">${spark}</div>
         <table class="history-table"><thead><tr><th>Date</th><th>Sets</th></tr></thead><tbody>${rows}</tbody></table>
@@ -1145,27 +1394,68 @@ function renderProgressCard(ex){
 function renderProgress(){
   const root = document.getElementById('view-progress');
   const allEx = Object.values(state.exercises);
+  const heatmap = renderHeatmap();
+
   if(!allEx.length){
     root.innerHTML = `<div class="day-heading" style="margin-top:6px;"><p class="day-eyebrow">All Lifts</p><h1 class="day-title">Progress</h1></div>
+      ${heatmap}
       <div class="empty-note">No exercises yet. Add some in the Split tab.</div>`;
     return;
   }
   const byMuscle = {};
   allEx.forEach(ex => { (byMuscle[ex.muscle] = byMuscle[ex.muscle]||[]).push(ex); });
 
-  let html = `<div class="day-heading" style="margin-top:6px;"><p class="day-eyebrow">All Lifts</p><h1 class="day-title">Progress</h1></div>`;
+  let html = `<div class="day-heading" style="margin-top:6px;"><p class="day-eyebrow">All Lifts</p><h1 class="day-title">Progress</h1></div>${heatmap}${getProgressHintHtml()}`;
   Object.keys(byMuscle).sort().forEach(muscle => {
     html += `<div class="section-title">${muscle}</div>`;
     byMuscle[muscle].forEach(ex => { html += renderProgressCard(ex); });
   });
   root.innerHTML = html;
+  wireProgressHint();
+  const hmScroll = document.getElementById('heatmap-scroll-el');
+  if(hmScroll) hmScroll.scrollLeft = hmScroll.scrollWidth;
+  if(hmScroll && !hmScroll.dataset.wired){
+    hmScroll.dataset.wired = '1';
+    hmScroll.addEventListener('click', (e) => {
+      const cell = e.target.closest('.hm-cell');
+      if(!cell) return;
+      const ds = cell.dataset.date;
+      const count = parseInt(cell.dataset.count, 10);
+      const d = new Date(ds + 'T12:00:00');
+      const label = d.toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'});
+      toast(count > 0 ? `${label} — ${count} exercise${count!==1?'s':''} logged` : `${label} — no workout logged`);
+    });
+  }
 
+  // expand/collapse progress cards
   root.querySelectorAll('.progress-card[data-ex]').forEach(card => {
     const head = card.querySelector('.progress-card-head');
     const body = card.querySelector('.progress-card-body');
     if(head && body) head.addEventListener('click', () => {
       body.classList.toggle('hidden');
       head.classList.toggle('open');
+    });
+  });
+
+  // tap a session's sets to edit weight/reps without changing the date
+  root.querySelectorAll('[data-edit-log]').forEach(td => {
+    td.addEventListener('click', () => {
+      openEditSessionSheet(td.dataset.editLog, td.dataset.editEx);
+    });
+  });
+
+  // per-session delete buttons
+  root.querySelectorAll('[data-log-id]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // don't trigger card expand/collapse
+      const logId = btn.dataset.logId;
+      const dayLabel = btn.dataset.dayLabel;
+      const exCount = btn.dataset.exCount;
+      const dateStr = btn.dataset.date;
+      if(!confirm(`Delete the ${dayLabel} session from ${dateStr}?\n\nThis removes all ${exCount} exercise${exCount!=='1'?'s':''} logged in that session. This cannot be undone.`)) return;
+      state.logs = state.logs.filter(l => l.id !== logId);
+      save(); renderProgress();
+      toast(`${dayLabel} session from ${dateStr} deleted.`);
     });
   });
 }
@@ -1861,7 +2151,7 @@ function parseAndRestoreBackup(json){
   try{
     const parsed = JSON.parse(json);
     if(!parsed.days || !parsed.exercises) throw new Error('bad shape');
-    state = parsed; save(); closeSheet(); renderAll();
+    state = parsed; collapsedDays = null; save(); closeSheet(); renderAll();
     toast('Backup restored.');
     return true;
   }catch(err){
