@@ -785,6 +785,13 @@ function exerciseLogsInOrder(exId){
     .sort((a,b) => a.date.localeCompare(b.date));
 }
 
+// treats weights as equal if they're within a small tolerance — protects against
+// floating-point drift from kg/lbs unit round-tripping (e.g. 45.3593 vs 45.36)
+const WEIGHT_TOLERANCE = 0.05;
+function weightsMatch(a, b){
+  return Math.abs(a - b) < WEIGHT_TOLERANCE;
+}
+
 function getProgressionStatus(exId){
   const ex = state.exercises[exId];
   if(!ex) return {streak:0, ready:false, lastSession:null, suggestedWeight:null};
@@ -792,11 +799,11 @@ function getProgressionStatus(exId){
   const last2 = history.slice(-2);
 
   const hitTop = (session) => session.sets.length>0 &&
-    session.sets.every(s => s.reps >= ex.repMax && s.weight === session.sets[0].weight);
+    session.sets.every(s => s.reps >= ex.repMax && weightsMatch(s.weight, session.sets[0].weight));
 
   let streak = 0;
   if(last2.length===2){
-    const sameWeight = last2[0].sets[0] && last2[1].sets[0] && last2[0].sets[0].weight === last2[1].sets[0].weight;
+    const sameWeight = last2[0].sets[0] && last2[1].sets[0] && weightsMatch(last2[0].sets[0].weight, last2[1].sets[0].weight);
     if(hitTop(last2[0]) && hitTop(last2[1]) && sameWeight) streak = 2;
     else if(hitTop(last2[1])) streak = 1;
   } else if(last2.length===1 && hitTop(last2[0])){
