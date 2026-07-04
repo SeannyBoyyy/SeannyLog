@@ -594,6 +594,39 @@ function toKg(val){
   return Math.round(kg*100)/100;
 }
 function unitLabel(){ return getUnit(); }
+// converts a typed weight value from one unit to another, independent of the
+// currently active global unit — used to fix up in-progress draft inputs when
+// the person switches units mid-workout, so a typed number keeps its real
+// meaning instead of being silently relabeled under the new unit
+function convertWeightValue(val, fromUnit, toUnit){
+  const n = parseFloat(val);
+  if(!isFinite(n)) return val;
+  if(fromUnit === toUnit) return val;
+  const kg = fromUnit === 'lbs' ? n / KG_TO_LBS : n;
+  const out = toUnit === 'lbs' ? kg * KG_TO_LBS : kg;
+  const rounded = toUnit === 'lbs' ? Math.round(out*4)/4 : Math.round(out*100)/100;
+  return formatWeight(rounded);
+}
+// re-converts any unsaved mid-workout draft weights so switching units doesn't
+// silently corrupt whatever you've already typed but haven't finished/logged yet
+function convertDraftUnits(newUnit){
+  const oldUnit = getUnit();
+  if(oldUnit === newUnit) return;
+  try{
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if(!raw) return;
+    const draft = JSON.parse(raw);
+    if(!draft || !draft.entries) return;
+    Object.values(draft.entries).forEach(sets => {
+      sets.forEach(set => {
+        if(set.weight !== '' && set.weight != null){
+          set.weight = convertWeightValue(set.weight, oldUnit, newUnit);
+        }
+      });
+    });
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }catch(e){}
+}
 function incrDefault(){ return getUnit()==='lbs' ? 5 : 2.5; }
 function incrStep(){   return getUnit()==='lbs' ? 0.5 : 0.25; }
 function incrMin(){    return getUnit()==='lbs' ? 0.5 : 0.25; }
@@ -691,6 +724,16 @@ const EXERCISE_LIBRARY = [
 /* ---------- helpers ---------- */
 function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
+// buckets a date by the LOCAL calendar day, not UTC — avoids the heatmap
+// filing a workout under the wrong day for anyone outside UTC (e.g. logging
+// a 2am session in a UTC+8 timezone should count as that local day, not the day before)
+function localDateKey(d){
+  const dt = (d instanceof Date) ? d : new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth()+1).padStart(2,'0');
+  const day = String(dt.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function clampInt(v, min, max, fallback){
   const n = parseInt(v,10);
   if(isNaN(n)) return fallback;
@@ -1168,13 +1211,13 @@ function renderHeatmap(){
   // date → exercise count
   const logsByDate = {};
   state.logs.forEach(log => {
-    const d = log.date.slice(0,10);
+    const d = localDateKey(log.date);
     const n = log.entries ? Object.keys(log.entries).length : 1;
     logsByDate[d] = (logsByDate[d]||0) + n;
   });
 
   const today = new Date();
-  const todayStr = today.toISOString().slice(0,10);
+  const todayStr = localDateKey(today);
 
   // grid starts Sunday of the week 25 weeks ago (matches GitHub's layout exactly)
   const dow = today.getDay(); // 0=Sun ... 6=Sat
@@ -1189,7 +1232,7 @@ function renderHeatmap(){
   for(let w=0;w<WEEKS;w++){
     const week=[];
     for(let d=0;d<7;d++){
-      const ds=cur.toISOString().slice(0,10);
+      const ds=localDateKey(cur);
       week.push({ds, count:logsByDate[ds]||0, isToday:ds===todayStr, isFuture:cur>today});
       cur.setDate(cur.getDate()+1);
     }
@@ -1206,15 +1249,15 @@ function renderHeatmap(){
 
   // stats
   const total = state.logs.length;
-  const thisM = today.toISOString().slice(0,7);
-  const thisMonthCount = state.logs.filter(l=>l.date.slice(0,7)===thisM).length;
+  const thisM = todayStr.slice(0,7);
+  const thisMonthCount = state.logs.filter(l=>localDateKey(l.date).slice(0,7)===thisM).length;
 
   // current streak (consecutive logged days going back)
   let streak=0;
   const sc=new Date(today);
   if(!logsByDate[todayStr]) sc.setDate(sc.getDate()-1);
   while(true){
-    const ds=sc.toISOString().slice(0,10);
+    const ds=localDateKey(sc);
     if(logsByDate[ds]){streak++;sc.setDate(sc.getDate()-1);}
     else break;
   }
@@ -1237,15 +1280,16 @@ function renderHeatmap(){
     return '#C1572A';
   }
 
-  // SVG dimensions
-  const svgW = DLW + WEEKS*(C+G);
+  // SVG dimensions — RPAD adds blank space after the last column so the
+  // right-edge fade overlay sits on empty space instead of covering today's cell
+  const RPAD = 14;
+  const svgW = DLW + WEEKS*(C+G) + RPAD;
   const svgH = 14 + 7*(C+G);
 
   let svg=`<svg viewBox="0 0 ${svgW} ${svgH+18}" width="${svgW}" xmlns="http://www.w3.org/2000/svg" style="display:block;">`;
 
   // month labels
   mLabels.forEach(({wi,label})=>{
-    if(wi===0) return; // skip if first week might be cut off
     const x=DLW+wi*(C+G);
     svg+=`<text x="${x}" y="10" font-family="IBM Plex Mono,monospace" font-size="9" fill="#A39E94">${label}</text>`;
   });
@@ -2074,8 +2118,8 @@ function openSettings(){
   document.getElementById('btn-export').addEventListener('click', exportData);
   document.getElementById('btn-import').addEventListener('click', openImportSheet);
   document.getElementById('btn-set-day').addEventListener('click', openDayPicker);
-  document.getElementById('unit-kg').addEventListener('click', () => { setUnit('kg'); closeSheet(); renderAll(); toast('Unit set to kg.'); });
-  document.getElementById('unit-lbs').addEventListener('click', () => { setUnit('lbs'); closeSheet(); renderAll(); toast('Unit set to lbs.'); });
+  document.getElementById('unit-kg').addEventListener('click', () => { convertDraftUnits('kg'); setUnit('kg'); closeSheet(); renderAll(); toast('Unit set to kg.'); });
+  document.getElementById('unit-lbs').addEventListener('click', () => { convertDraftUnits('lbs'); setUnit('lbs'); closeSheet(); renderAll(); toast('Unit set to lbs.'); });
   document.getElementById('btn-undo').addEventListener('click', () => {
     const didUndo = undoLastLog();
     if(didUndo) closeSheet();
