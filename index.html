@@ -798,14 +798,17 @@ function getProgressionStatus(exId){
   const history = exerciseLogsInOrder(exId);
   const last2 = history.slice(-2);
 
-  const hitTop = (session) => session.sets.length>0 &&
-    session.sets.every(s => s.reps >= ex.repMax && weightsMatch(s.weight, session.sets[0].weight));
+  // a session "hits top" if ANY logged set reaches the rep max — works whether
+  // someone logs just 1 set that day, or throws in extra bonus sets beyond ex.sets
+  const hitTop = (session) => session.sets.some(s => s.reps >= ex.repMax);
 
   let streak = 0;
   if(last2.length===2){
+    const h0 = hitTop(last2[0]);
+    const h1 = hitTop(last2[1]);
     const sameWeight = last2[0].sets[0] && last2[1].sets[0] && weightsMatch(last2[0].sets[0].weight, last2[1].sets[0].weight);
-    if(hitTop(last2[0]) && hitTop(last2[1]) && sameWeight) streak = 2;
-    else if(hitTop(last2[1])) streak = 1;
+    if(h0 && h1 && sameWeight) streak = 2;
+    else if(h0 || h1) streak = 1;
   } else if(last2.length===1 && hitTop(last2[0])){
     streak = 1;
   }
