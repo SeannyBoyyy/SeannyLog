@@ -10,7 +10,7 @@ A no-nonsense progressive overload tracker built as a PWA — installable on you
 
 SeannyLog is built around one question: **am I actually getting stronger?**
 
-You set up your training split (Push / Pull / Legs / Rest or any pattern you want), assign exercises to each day, and log your weight and reps every session. The app tracks a two-session streak per exercise — once you hit the top of your rep range across all sets in two sessions in a row at the same weight, it tells you it's **Time to Ascend** and pre-fills the next suggested weight automatically.
+You set up your training split (Push / Pull / Legs / Rest or any pattern you want), assign exercises to each day, and log your weight and reps every session. The app tracks a two-session streak per exercise — once you hit the top of your rep range on any set (1 set or several — doesn't need to be every set) in each of your last two logged sessions, at the same weight, it tells you it's **Time to Ascend** and pre-fills the next suggested weight automatically.
 
 No noise. No social features. Just your lifts and whether you're progressing.
 
@@ -19,7 +19,7 @@ No noise. No social features. Just your lifts and whether you're progressing.
 ## Features
 
 **Tracking**
-- **Progressive overload detection** — fires after hitting your rep target on all sets, two sessions in a row
+- **Progressive overload detection** — fires after hitting your rep target on any set, at the same weight, in each of your last two logged sessions
 - **Time to Ascend badge** — clear visual cue when it's time to add weight, with the suggested weight pre-filled
 - **Streak dots** — two dots per exercise showing your current streak toward the trigger (0/2, 1/2, 2/2)
 - **Session history** — sparkline chart + last 6 sessions per exercise in the Progress tab
