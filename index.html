@@ -1016,10 +1016,10 @@ function renderExerciseCard(ex){
       </div>`;
   }).join('');
 
-  const minLastReps = lastSets ? Math.min(...lastSets.map(s=>s.reps)) : null;
-  const fellShort = !status.ready && lastSets && minLastReps < ex.repMax;
+  const hitAnySet = lastSets ? lastSets.some(s => s.reps >= ex.repMax) : false;
+  const fellShort = !status.ready && lastSets && !hitAnySet;
   const lastLine = lastSets
-    ? `Last: ${lastSets.map(s => `${formatWeight(toDisplay(s.weight))}${unitLabel()} × ${s.reps}`).join(' · ')}${fellShort ? ` — need ${ex.repMax} reps on every set to count` : ''}`
+    ? `Last: ${lastSets.map(s => `${formatWeight(toDisplay(s.weight))}${unitLabel()} × ${s.reps}`).join(' · ')}${fellShort ? ` — need at least one set to hit ${ex.repMax} reps to count` : ''}`
     : `No history yet — target ${ex.repMin}–${ex.repMax} reps`;
 
   const lastWeight = (lastSets && lastSets.length) ? formatWeight(toDisplay(lastSets[lastSets.length-1].weight)) : '';
