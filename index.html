@@ -419,6 +419,12 @@
     font-family:var(--mono); font-size:10px; color:var(--chalk-dim);
     text-align:right; margin-top:6px; opacity:0.7;
   }
+  .heatmap-legend{
+    display:flex; align-items:center; gap:4px; justify-content:flex-end;
+    font-family:var(--mono); font-size:10px; color:var(--chalk-dim);
+    margin-top:8px;
+  }
+  .legend-swatch{ width:12px; height:12px; border-radius:2.5px; flex:none; }
 
   .settings-row{
     display:flex; justify-content:space-between; align-items:center;
@@ -1286,7 +1292,7 @@ function renderHeatmap(){
   const svgW = DLW + WEEKS*(C+G) + RPAD;
   const svgH = 14 + 7*(C+G);
 
-  let svg=`<svg viewBox="0 0 ${svgW} ${svgH+18}" width="${svgW}" xmlns="http://www.w3.org/2000/svg" style="display:block;">`;
+  let svg=`<svg viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" xmlns="http://www.w3.org/2000/svg" style="display:block;">`;
 
   // month labels
   mLabels.forEach(({wi,label})=>{
@@ -1314,13 +1320,6 @@ function renderHeatmap(){
     });
   });
 
-  // legend
-  const ly=svgH+6, lx=svgW-4*(C+G)-38;
-  svg+=`<text x="${lx}" y="${ly+9}" font-family="IBM Plex Mono,monospace" font-size="9" fill="#A39E94">Less</text>`;
-  ['#433E37','rgba(193,87,42,0.32)','rgba(193,87,42,0.64)','#C1572A'].forEach((col,i)=>{
-    svg+=`<rect x="${lx+30+i*(C+G)}" y="${ly}" width="${C}" height="${C}" rx="2.5" fill="${col}"/>`;
-  });
-  svg+=`<text x="${lx+30+4*(C+G)+2}" y="${ly+9}" font-family="IBM Plex Mono,monospace" font-size="9" fill="#A39E94">More</text>`;
   svg+='</svg>';
 
   return `
@@ -1335,6 +1334,14 @@ function renderHeatmap(){
       <div class="heatmap-scroll-wrap">
         <div class="heatmap-scroll" id="heatmap-scroll-el">${svg}</div>
         <div class="heatmap-fade"></div>
+      </div>
+      <div class="heatmap-legend">
+        <span>Less</span>
+        <span class="legend-swatch" style="background:#433E37"></span>
+        <span class="legend-swatch" style="background:rgba(193,87,42,0.32)"></span>
+        <span class="legend-swatch" style="background:rgba(193,87,42,0.64)"></span>
+        <span class="legend-swatch" style="background:#C1572A"></span>
+        <span>More</span>
       </div>
       <p class="heatmap-scroll-hint">← swipe for earlier weeks</p>
     </div>`;
