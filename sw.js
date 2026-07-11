@@ -1,8 +1,16 @@
-const CACHE_NAME = 'seannylog-v2.7';
+const CACHE_NAME = 'seannylog-v3.0';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './css/style.css',
+  './js/state.js',
+  './js/logic.js',
+  './js/render-today.js',
+  './js/render-progress.js',
+  './js/render-split.js',
+  './js/settings.js',
+  './js/ui.js',
   './icon-192.png',
   './icon-512.png',
   './icon-512-maskable.png'
