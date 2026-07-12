@@ -11,8 +11,11 @@ function exerciseLogsInOrder(exId){
 }
 
 // treats weights as equal if they're within a small tolerance — protects against
-// floating-point drift from kg/lbs unit round-tripping (e.g. 45.3593 vs 45.36)
-const WEIGHT_TOLERANCE = 0.05;
+// floating-point drift from kg/lbs unit round-tripping (e.g. 45.3593 vs 45.36),
+// and against normal small variation in real-world loading (e.g. 59.92 vs 59.87).
+// Must be comfortably larger than the smallest displayable step (0.01), or a
+// single real-world "one tick different" weight will wrongly break the streak.
+const WEIGHT_TOLERANCE = 0.1;
 function weightsMatch(a, b){
   return Math.abs(a - b) < WEIGHT_TOLERANCE;
 }
