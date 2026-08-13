@@ -81,12 +81,22 @@ function renderExerciseCard(ex){
 
 let todayWired = false;
 
+// True once the user has actually typed into a set field or added/removed a
+// set row since the last renderToday(). This is what todayIsDirty() (ui.js)
+// reads. It's intentionally NOT "do any inputs currently have a value" —
+// weight inputs are prefilled with a suggested/last-session weight as soon as
+// a card renders, so that check was true almost immediately on load, before
+// the person touched anything. That made safeRenderToday() a permanent no-op
+// for any day with prior history, so a newly added exercise (e.g. from the
+// Split tab) never appeared in Today until a full page reload.
+let todayUserEdited = false;
+
 function wireTodayDelegation(){
   const root = document.getElementById('view-today');
 
   // autosave draft on every input change
   root.addEventListener('input', (e) => {
-    if(e.target.classList.contains('set-input')) saveDraft();
+    if(e.target.classList.contains('set-input')){ todayUserEdited = true; saveDraft(); }
   });
   root.addEventListener('click', (e) => {
     // Finish workout button
@@ -135,6 +145,7 @@ function wireTodayDelegation(){
       row.querySelector('input').focus();
       const rmBtn = addBtn.closest('.ex-card')?.querySelector('[data-remove-set]');
       if(rmBtn) rmBtn.disabled = false;
+      todayUserEdited = true;
       saveDraft();
       return;
     }
@@ -149,12 +160,15 @@ function wireTodayDelegation(){
       if(rows.length <= 1) return;
       rows[rows.length - 1].remove();
       if(container.querySelectorAll('.set-row').length <= 1) rmBtn.disabled = true;
+      todayUserEdited = true;
       saveDraft();
     }
   });
 }
 
 function renderToday(){
+  // fresh render = clean slate; nothing has been edited in this DOM incarnation yet
+  todayUserEdited = false;
   const root = document.getElementById('view-today');
   const day = state.days[state.cycleIndex];
   const pips = state.days.map((d,i) =>

@@ -35,8 +35,13 @@ function toastWithUndo(msg, onUndo, delay=4000){
 }
 
 /* ---------- nav / init ---------- */
+// Was: scanned the DOM for any non-empty .set-input. That falsely counted
+// prefilled suggested/last-session weights as "dirty" the instant a card
+// rendered, so it stayed true almost permanently and safeRenderToday() below
+// never actually re-rendered. todayUserEdited (render-today.js) tracks real
+// user edits instead: typing into a field, or adding/removing a set row.
 function todayIsDirty(){
-  return [...document.querySelectorAll('#view-today .set-input')].some(inp => inp.value.trim() !== '');
+  return todayUserEdited;
 }
 function safeRenderToday(){
   if(!todayIsDirty()) renderToday();
