@@ -356,14 +356,37 @@ function openExercisePicker(dayId){
   const muscleOptions = ['All', ...MUSCLES];
 
   function listHtml(){
-    const items = EXERCISE_LIBRARY.filter(item => activeMuscle==='All' || item.muscle===activeMuscle);
-    if(!items.length) return `<div class="empty-note">No matches.</div>`;
-    return items.map(item => {
-      const alreadyAdded = day.exerciseIds.some(id => state.exercises[id] && state.exercises[id].name===item.name);
-      return `<button class="picker-item ${alreadyAdded?'added':''}" data-pick="${escapeHtml(item.name)}" data-muscle="${item.muscle}" ${alreadyAdded?'disabled':''}>
-        <span>${escapeHtml(item.name)}</span><span class="muscle">${item.muscle}</span>
-      </button>`;
-    }).join('');
+    // Your own exercises (seeded, library-added, or custom — e.g. one you made
+    // via the Exercises tab and skipped assigning to a day) surface first, since
+    // reusing something you already track is the common case. Matched by id, not
+    // name, since these already have one.
+    const mine = Object.values(state.exercises).filter(ex => activeMuscle==='All' || ex.muscle===activeMuscle);
+    const mineNames = new Set(mine.map(ex => ex.name));
+    // Preset suggestions, minus anything you've already created under the same
+    // name so the same exercise doesn't show up twice.
+    const suggested = EXERCISE_LIBRARY.filter(item => (activeMuscle==='All' || item.muscle===activeMuscle) && !mineNames.has(item.name));
+
+    if(!mine.length && !suggested.length) return `<div class="empty-note">No matches.</div>`;
+
+    let html = '';
+    if(mine.length){
+      html += `<div class="section-title" style="margin-top:0;">Your Exercises</div>`;
+      html += mine.map(ex => {
+        const alreadyAdded = day.exerciseIds.includes(ex.id);
+        return `<button class="picker-item ${alreadyAdded?'added':''}" data-pick-existing="${ex.id}" ${alreadyAdded?'disabled':''}>
+          <span>${escapeHtml(ex.name)}</span><span class="muscle">${ex.muscle}</span>
+        </button>`;
+      }).join('');
+    }
+    if(suggested.length){
+      html += `<div class="section-title">Suggested</div>`;
+      html += suggested.map(item => {
+        return `<button class="picker-item" data-pick="${escapeHtml(item.name)}" data-muscle="${item.muscle}">
+          <span>${escapeHtml(item.name)}</span><span class="muscle">${item.muscle}</span>
+        </button>`;
+      }).join('');
+    }
+    return html;
   }
   function chipsHtml(){
     return muscleOptions.map(m => `<button class="muscle-chip ${m===activeMuscle?'active':''}" data-muscle-filter="${m}">${m}</button>`).join('');
@@ -384,6 +407,15 @@ function openExercisePicker(dayId){
         addLibraryExerciseToDay(btn.dataset.pick, btn.dataset.muscle, dayId);
         closeSheet(); renderSplit(); safeRenderToday();
         toast(`${btn.dataset.pick} added to ${day.label}.`);
+      });
+    });
+    document.querySelectorAll('[data-pick-existing]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const exId = btn.dataset.pickExisting;
+        const name = state.exercises[exId] ? state.exercises[exId].name : 'Exercise';
+        addExistingExerciseToDay(exId, dayId);
+        closeSheet(); renderSplit(); safeRenderToday();
+        toast(`${name} added to ${day.label}.`);
       });
     });
     document.getElementById('btn-open-custom').addEventListener('click', () => openCustomExerciseForm(dayId));

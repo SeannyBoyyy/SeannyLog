@@ -142,3 +142,13 @@ function addLibraryExerciseToDay(name, muscle, dayId){
   if(!day.exerciseIds.includes(exId)) day.exerciseIds.push(exId);
   save();
 }
+
+// Attach an exercise that already exists in state.exercises (seeded, library-added,
+// or custom) to another day. No name lookup needed since we already have its id —
+// this is what lets a custom exercise created via the Exercises tab (skip-day-assignment
+// path) get picked up later from any day's "+ Exercise" sheet.
+function addExistingExerciseToDay(exId, dayId){
+  const day = state.days.find(d => d.id===dayId);
+  if(day && !day.exerciseIds.includes(exId)) day.exerciseIds.push(exId);
+  save();
+}
