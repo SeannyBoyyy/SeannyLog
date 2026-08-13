@@ -54,27 +54,45 @@ function advanceCycle(){
   state.cycleIndex = (state.cycleIndex + 1) % state.days.length;
 }
 
-function finishWorkout(){
+// Reads every set input for the current day's exercises in one pass. Shared by
+// finishWorkout() (which needs the valid entries to log) and the finish
+// confirmation sheet (which needs to know what's still missing) so the two
+// can never disagree about what counts as "logged".
+//   entries    — exId -> valid {weight,reps} sets in kg, ready to log
+//   incomplete — exercises with at least one un-logged row: {name, logged, total}
+//   anyFilled  — true if at least one valid set exists anywhere on the day
+function collectTodaySetData(){
   const day = state.days[state.cycleIndex];
   const entries = {};
+  const incomplete = [];
   let anyFilled = false;
 
   day.exerciseIds.forEach(exId => {
     const ex = state.exercises[exId];
     if(!ex) return;
     const sets = [];
+    let total = 0;
     let i = 0;
     while(true){
       const w = document.getElementById(`set-w-${exId}-${i}`);
       const r = document.getElementById(`set-r-${exId}-${i}`);
       if(!w || !r) break;
+      total++;
       const wv = parseFloat(w.value);
       const rv = parseInt(r.value,10);
       if(!isNaN(wv) && !isNaN(rv) && wv>0 && rv>0) sets.push({weight:toKg(wv), reps:rv});
       i++;
     }
     if(sets.length){ entries[exId] = sets; anyFilled = true; }
+    if(sets.length < total) incomplete.push({ name: ex.name, logged: sets.length, total });
   });
+
+  return { entries, incomplete, anyFilled };
+}
+
+function finishWorkout(){
+  const day = state.days[state.cycleIndex];
+  const { entries, anyFilled } = collectTodaySetData();
 
   if(!anyFilled){ toast('Log at least one set before finishing.'); return; }
 

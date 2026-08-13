@@ -99,8 +99,9 @@ function wireTodayDelegation(){
     if(e.target.classList.contains('set-input')){ todayUserEdited = true; saveDraft(); }
   });
   root.addEventListener('click', (e) => {
-    // Finish workout button
-    if(e.target.id === 'btn-finish'){ finishWorkout(); return; }
+    // Finish workout button — opens a confirm sheet rather than finishing
+    // immediately, so a stray tap can't end the session by itself.
+    if(e.target.id === 'btn-finish'){ openFinishConfirmSheet(); return; }
 
     // Finish rest button
     if(e.target.id === 'btn-finish-rest'){
@@ -164,6 +165,46 @@ function wireTodayDelegation(){
       saveDraft();
     }
   });
+}
+
+// Confirm sheet shown before a workout is actually finished. Always requires
+// an explicit second tap — even on a fully-logged day — so one stray tap on
+// "Finish Workout" can never end the session by itself. When something's
+// still unlogged it lists exactly what, since that's the case a misclick is
+// most often trying (and failing) to avoid.
+function openFinishConfirmSheet(){
+  const { incomplete, anyFilled } = collectTodaySetData();
+
+  // Nothing logged at all — finishWorkout()'s own toast already covers this
+  // clearly and instantly; a whole sheet for it would be more friction, not less.
+  if(!anyFilled){ finishWorkout(); return; }
+
+  const day = state.days[state.cycleIndex];
+  const bodyHtml = incomplete.length
+    ? `<p style="font-size:13px; color:var(--chalk-dim); margin:0 0 12px; line-height:1.5;">Some sets aren't logged yet:</p>
+       <div style="margin-bottom:4px;">
+         ${incomplete.map(item => `
+           <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px;">
+             <span>${escapeHtml(item.name)}</span>
+             <span style="font-family:var(--mono); color:var(--chalk-dim);">${item.logged}/${item.total} sets</span>
+           </div>`).join('')}
+       </div>
+       <p style="font-size:13px; color:var(--chalk-dim); margin:14px 0 0; line-height:1.5;">Unlogged sets won't be saved. Finish anyway, or go back and fill them in.</p>`
+    : `<p style="font-size:13px; color:var(--chalk-dim); margin:0 0 4px; line-height:1.5;">Every set's logged. Nice work today.</p>`;
+
+  setSheet(`
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title">Finish ${escapeHtml(day.label)}?</h2>
+    ${bodyHtml}
+    <button class="btn btn-primary" id="btn-finish-confirm" style="margin-top:16px;">Finish Workout</button>
+    <button class="btn btn-outline" id="btn-finish-cancel" style="margin-top:8px;">Go Back</button>
+  `);
+  document.getElementById('btn-finish-confirm').addEventListener('click', () => {
+    closeSheet();
+    finishWorkout();
+  });
+  document.getElementById('btn-finish-cancel').addEventListener('click', () => closeSheet());
+  openSheet();
 }
 
 function renderToday(){
