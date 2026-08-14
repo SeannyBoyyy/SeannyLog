@@ -50,6 +50,9 @@ function openSettings(){
     <p style="font-family:var(--mono); font-size:11px; color:var(--chalk-dim); margin-top:18px; line-height:1.6;">
       Everything lives only on this device. Export before clearing your browser or switching phones.
     </p>
+    <p style="font-family:var(--mono); font-size:11px; color:var(--chalk-dim); margin-top:10px;">
+      SeannyLog v${APP_VERSION}
+    </p>
   `);
   document.getElementById('btn-export').addEventListener('click', exportData);
   document.getElementById('btn-import').addEventListener('click', openImportSheet);
