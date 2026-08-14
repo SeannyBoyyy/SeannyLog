@@ -33,6 +33,18 @@ function toastWithUndo(msg, onUndo, delay=4000){
     onUndo();
   });
 }
+// Shown once a NEW service worker has already taken over in the background
+// (see controllerchange wiring below). Deliberately does not auto-hide and
+// does not reload on its own — the update is picked up next reload regardless,
+// so this only exists to explain a version number that might otherwise look
+// stale, on your own schedule rather than mid-set.
+function toastUpdateReady(){
+  const el = document.getElementById('toast');
+  el.innerHTML = `<span class="toast-msg">Update ready.</span><button class="toast-undo" id="toast-refresh-btn">Refresh</button>`;
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  document.getElementById('toast-refresh-btn').addEventListener('click', () => location.reload());
+}
 
 /* ---------- nav / init ---------- */
 // Was: scanned the DOM for any non-empty .set-input. That falsely counted
@@ -80,7 +92,19 @@ document.getElementById('sheet-backdrop').addEventListener('click', (e) => {
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
+    // clients.claim() in sw.js means even a brand-new install hands control
+    // to this page immediately, firing controllerchange once on its own —
+    // that's not an update, it's the first install completing, so only wire
+    // the "update ready" toast when something was already controlling this
+    // page beforehand.
+    const hadControllerAlready = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.register('sw.js').catch(() => {});
+
+    if(hadControllerAlready){
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        toastUpdateReady();
+      }, { once:true });
+    }
   });
 }
 
