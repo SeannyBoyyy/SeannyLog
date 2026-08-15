@@ -12,7 +12,7 @@ const PROGRESS_HINT_KEY = 'ironlog.progress.hint.dismissed';
 // Shown in Settings so you can confirm a deploy actually reached this device.
 // No build step ties this to sw.js's CACHE_NAME automatically — bump both by
 // hand together when you ship a change.
-const APP_VERSION = '3.7';
+const APP_VERSION = '3.8';
 let splitSegment = 'days';
 let collapsedDays = null; // null = not yet initialized; Set of day IDs when ready
 

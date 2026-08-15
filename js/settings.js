@@ -25,27 +25,33 @@ function openSettings(){
       </div>
       <button class="btn btn-small btn-ghost" id="btn-export">Export</button>
     </div>
-    <div class="settings-row">
+    <div class="settings-row" style="border-bottom:none;">
       <div>
         <div class="settings-row-text">Import backup</div>
         <div class="settings-row-sub">Restore from a file or pasted text</div>
       </div>
       <button class="btn btn-small btn-ghost" id="btn-import">Import</button>
     </div>
-    <div class="settings-row">
-      <div>
-        <div class="settings-row-text">Current day in cycle</div>
-        <div class="settings-row-sub">Now on: Day ${state.cycleIndex+1} — ${escapeHtml(state.days[state.cycleIndex]?.label || '?')}</div>
+    <div style="margin-top:26px;">
+      <div style="font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--chalk-dim); margin-bottom:10px;">Recovery</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-text">Current day in cycle</div>
+          <div class="settings-row-sub">Now on: Day ${state.cycleIndex+1} — ${escapeHtml(state.days[state.cycleIndex]?.label || '?')}</div>
+        </div>
+        <button class="btn btn-small btn-ghost" id="btn-set-day">Change</button>
       </div>
-      <button class="btn btn-small btn-ghost" id="btn-set-day">Change</button>
+      <div class="settings-row" style="border-bottom:none;">
+        <div><div class="settings-row-text">Undo last workout</div><div class="settings-row-sub">${state.logs.length} session${state.logs.length===1?'':'s'} logged</div></div>
+        <button class="btn btn-small btn-ghost" id="btn-undo">Undo</button>
+      </div>
     </div>
-    <div class="settings-row">
-      <div><div class="settings-row-text">Undo last workout</div><div class="settings-row-sub">${state.logs.length} session${state.logs.length===1?'':'s'} logged</div></div>
-      <button class="btn btn-small btn-ghost" id="btn-undo">Undo</button>
-    </div>
-    <div class="settings-row">
-      <div><div class="settings-row-text">Reset all data</div><div class="settings-row-sub">Wipes your split, history, everything</div></div>
-      <button class="btn btn-small btn-danger" id="btn-reset">Reset</button>
+    <div style="margin-top:26px;">
+      <div style="font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--danger); margin-bottom:10px;">Danger Zone</div>
+      <div class="settings-row" style="border-bottom:none;">
+        <div><div class="settings-row-text">Reset all data</div><div class="settings-row-sub">Wipes your split, history, everything</div></div>
+        <button class="btn btn-small btn-danger" id="btn-reset">Reset</button>
+      </div>
     </div>
     <p style="font-family:var(--mono); font-size:11px; color:var(--chalk-dim); margin-top:18px; line-height:1.6;">
       Everything lives only on this device. Export before clearing your browser or switching phones.
@@ -63,11 +69,46 @@ function openSettings(){
     const didUndo = undoLastLog();
     if(didUndo) closeSheet();
   });
-  document.getElementById('btn-reset').addEventListener('click', () => {
-    if(confirm('This wipes everything and cannot be undone. Continue?')){
-      state = seedData(); collapsedDays = null; save(); closeSheet(); renderAll();
-      toast('Reset complete.');
-    }
+  document.getElementById('btn-reset').addEventListener('click', openResetConfirmSheet);
+  openSheet();
+}
+
+// Reset wipes everything with no recovery path (short of a backup you may not
+// have made), so it gets more than the one-tap-plus-generic-dialog protection
+// Undo has — real numbers pulled from state instead of generic wording, and
+// the button hierarchy deliberately inverted: Cancel reads as the primary,
+// inviting action; the actual delete button is the quieter, secondary one.
+// That's on purpose — it's the one action in this app a reflexive tap should
+// never land on by default.
+function openResetConfirmSheet(){
+  const sessionCount = state.logs.length;
+  const exerciseCount = Object.keys(state.exercises).length;
+  setSheet(`
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title" style="color:var(--danger);">Reset Everything?</h2>
+    <p style="font-size:13px; color:var(--chalk-dim); margin:0 0 12px; line-height:1.6;">This permanently deletes:</p>
+    <div style="margin-bottom:4px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px;">
+        <span>Logged sessions</span>
+        <span style="font-family:var(--mono); color:var(--chalk-dim);">${sessionCount}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px;">
+        <span>Exercises in your library</span>
+        <span style="font-family:var(--mono); color:var(--chalk-dim);">${exerciseCount}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; font-size:13px;">
+        <span>Your entire split</span>
+        <span style="font-family:var(--mono); color:var(--chalk-dim);">gone</span>
+      </div>
+    </div>
+    <p style="font-size:13px; color:var(--chalk-dim); margin:14px 0 0; line-height:1.5;">There's no undo for this. Export a backup first if you're not sure.</p>
+    <button class="btn btn-primary" id="btn-reset-cancel" style="margin-top:16px;">Cancel</button>
+    <button class="btn btn-danger" id="btn-reset-confirm" style="margin-top:8px;">Yes, Delete Everything</button>
+  `);
+  document.getElementById('btn-reset-cancel').addEventListener('click', () => closeSheet());
+  document.getElementById('btn-reset-confirm').addEventListener('click', () => {
+    state = seedData(); collapsedDays = null; save(); closeSheet(); renderAll();
+    toast('Reset complete.');
   });
   openSheet();
 }
@@ -116,6 +157,7 @@ async function exportData(){
           text: 'SeannyLog workout data backup',
           files: [file]
         });
+        toast('Backup shared.');
         return;
       }
       // Fallback: share as text (copies-friendly for notes/whatsapp)
@@ -123,6 +165,7 @@ async function exportData(){
         title: 'SeannyLog Backup',
         text: json
       });
+      toast('Backup shared.');
       return;
     }catch(err){
       if(err.name === 'AbortError') return; // user cancelled share sheet

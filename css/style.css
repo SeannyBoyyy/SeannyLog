@@ -6,6 +6,8 @@
     --chalk-dim:#A39E94;
     --rust:#C1572A;
     --rust-dim:#8F4520;
+    --danger:#C0392B;
+    --danger-dim:#8F2A1F;
     --steel:#6E8B98;
     --line: rgba(237,234,227,0.09);
     --radius: 14px;
@@ -179,7 +181,8 @@
   .btn-ghost{ background:var(--iron-soft-2); color:var(--chalk); }
   .btn-outline{ background:transparent; color:var(--chalk-dim); border:1px solid var(--line); }
   .btn-small{ padding:10px 14px; font-size:12.5px; width:auto; }
-  .btn-danger{ background:transparent; color:var(--rust); border:1px solid var(--rust-dim); }
+  .btn-danger{ background:transparent; color:var(--danger); border:1px solid var(--danger-dim); }
+  .btn-danger:active{ background:rgba(192,57,43,0.12); }
 
   .finish-bar{ margin-top:18px; }
 
