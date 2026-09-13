@@ -1,4 +1,4 @@
-const CACHE_NAME = 'seannylog-v3.8';
+const CACHE_NAME = 'seannylog-v3.10';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const ASSETS = [
   './js/logic.js',
   './js/render-today.js',
   './js/render-progress.js',
+  './js/render-muscle-map.js',
   './js/render-split.js',
   './js/settings.js',
   './js/ui.js',

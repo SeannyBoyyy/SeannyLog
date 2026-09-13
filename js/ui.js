@@ -5,9 +5,22 @@
    other module and runs renderAll() immediately. */
 
 /* ---------- sheet plumbing ---------- */
-function setSheet(html){ document.getElementById('sheet-content').innerHTML = html; }
+let sheetCleanup = null;
+function setSheet(html, cleanup = null){
+  // Optional lifecycle for flows that manage focus; replacement is not dismissal.
+  const previousCleanup = sheetCleanup;
+  sheetCleanup = null;
+  if(previousCleanup) previousCleanup(false);
+  document.getElementById('sheet-content').innerHTML = html;
+  sheetCleanup = cleanup;
+}
 function openSheet(){ document.getElementById('sheet-backdrop').classList.remove('hidden'); }
-function closeSheet(){ document.getElementById('sheet-backdrop').classList.add('hidden'); }
+function closeSheet(){
+  document.getElementById('sheet-backdrop').classList.add('hidden');
+  const cleanup = sheetCleanup;
+  sheetCleanup = null;
+  if(cleanup) cleanup(true);
+}
 
 /* ---------- toast ---------- */
 let toastTimer;

@@ -212,6 +212,63 @@
   .session-del-btn:active{ color:var(--rust); opacity:1; }
   .empty-note{ color:var(--chalk-dim); font-size:13px; padding:20px 4px; text-align:center; line-height:1.5; }
 
+  .progress-heading{ margin-top:6px; }
+  .progress-segments .segment-btn, .muscle-map-side-control .segment-btn{ min-height:44px; }
+
+  /* ---------- muscle progress (all colors describe history availability) ---------- */
+  .muscle-map-view{
+    background:var(--iron-soft); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px; min-width:0;
+  }
+  .muscle-map-side-control{ max-width:240px; margin:0 auto 12px; }
+  .muscle-map-intro, .muscle-map-note{
+    color:var(--chalk-dim); font-size:12px; line-height:1.6; margin:10px 0;
+  }
+  .muscle-map-intro{ text-align:center; }
+  .muscle-map-body{ display:block; width:100%; max-width:280px; height:auto; margin:12px auto 20px; overflow:visible; }
+  .muscle-map-ground{ fill:var(--line); pointer-events:none; }
+  .muscle-map-silhouette{ fill:var(--iron); stroke:var(--chalk-dim); stroke-width:1.2; stroke-opacity:0.65; pointer-events:none; }
+  .muscle-map-region{ --muscle-map-contour:var(--chalk-dim); cursor:pointer; stroke-width:1.2; stroke-linejoin:round; }
+  .muscle-map-region path{ vector-effect:non-scaling-stroke; }
+  .muscle-map-no-exercises{ fill:var(--iron-soft-2); stroke:var(--chalk-dim); stroke-opacity:0.65; }
+  .muscle-map-unlogged{ fill:var(--iron); stroke:var(--chalk-dim); }
+  .muscle-map-logged{ --muscle-map-contour:var(--iron); fill:var(--rust); stroke:var(--rust-dim); }
+  .muscle-map-region.muscle-map-selected{ stroke:var(--steel); stroke-width:2.5; stroke-opacity:1; }
+  .muscle-map-region:focus-visible{ outline:2px solid var(--steel); outline-offset:4px; stroke:var(--steel); stroke-width:2.5; stroke-opacity:1; }
+  /* Up to two SVG units of padding; chest/shoulder junctions use one unit
+     to keep adjacent targets separate. Never another tab stop. */
+  .muscle-map-region .muscle-map-hit{ fill:transparent; stroke:transparent; stroke-width:4; stroke-opacity:1; }
+  .muscle-map-region .muscle-map-hit-tight{ stroke-width:2; }
+  .muscle-map-hit path{ vector-effect:none; pointer-events:all; }
+  .muscle-map-lines, .muscle-map-contours{ fill:none; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
+  .muscle-map-region .muscle-map-lines{ stroke:var(--muscle-map-contour); stroke-width:1; stroke-opacity:0.75; }
+  .muscle-map-contours{ stroke:var(--chalk-dim); stroke-width:1; stroke-opacity:0.65; }
+  .muscle-map-contours path{ vector-effect:non-scaling-stroke; }
+  .muscle-map-buttons{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+  .muscle-map-select{ min-height:48px; min-width:0; padding:10px 8px; font-size:13px; color:var(--chalk); }
+  .muscle-map-select.muscle-map-selected{ border-color:var(--steel); box-shadow:inset 0 0 0 1px var(--steel); }
+  .muscle-map-swatch{ display:inline-block; flex:none; width:12px; height:12px; border-radius:3px; border:1px solid transparent; }
+  .muscle-map-swatch.muscle-map-no-exercises{ background:var(--iron-soft-2); border-color:var(--chalk-dim); }
+  .muscle-map-swatch.muscle-map-unlogged{ background:var(--iron); border-color:var(--chalk-dim); }
+  .muscle-map-swatch.muscle-map-logged{ background:var(--rust); border-color:var(--rust); }
+  .muscle-map-legend{ display:flex; flex-wrap:wrap; gap:8px 16px; list-style:none; padding:0; margin:18px 0 8px; }
+  .muscle-map-legend li{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--chalk-dim); }
+  .muscle-map-detail{ min-width:0; overflow-wrap:anywhere; }
+  .muscle-map-detail-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+  .muscle-map-detail-head .sheet-title{ margin:0; }
+  .muscle-map-close{ min-height:44px; flex:none; }
+  .muscle-map-summary{ background:var(--iron); border:1px solid var(--line); border-radius:var(--radius); padding:16px; }
+  .muscle-map-metric-label{ font-size:13px; font-weight:500; color:var(--chalk-dim); margin:0; }
+  .muscle-map-average{ font-family:var(--display); font-size:30px; line-height:1.2; margin:10px 0; }
+  .muscle-map-caption{ font-family:var(--mono); font-size:11px; line-height:1.6; color:var(--chalk-dim); margin:8px 0 0; }
+  .muscle-map-exercise{ border-top:1px solid var(--line); padding:18px 0 8px; margin-top:18px; }
+  .muscle-map-exercise .ex-name{ margin:0 0 12px; line-height:1.4; }
+  .muscle-map-weights{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px; font-family:var(--mono); font-size:14px; line-height:1.6; margin:6px 0; }
+  .muscle-map-change{ font-family:var(--mono); font-size:13px; line-height:1.6; margin:6px 0; }
+  .muscle-map-sparkline{ display:block; width:100%; height:46px; margin-top:12px; fill:var(--rust); }
+  .muscle-map-sparkline path{ fill:none; stroke:var(--rust); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .muscle-map-history-note{ border-top:1px solid var(--line); padding-top:14px; margin-top:18px; }
+
   /* ---------- split view ---------- */
   .day-card{
     background:var(--iron-soft); border:1px solid var(--line); border-radius:var(--radius);

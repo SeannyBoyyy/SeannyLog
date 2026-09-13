@@ -1,6 +1,8 @@
 /* ===================== Progress view ===================== */
-/* Consistency heatmap, per-exercise history cards, sparkline, and the
-   session edit sheet. */
+/* Overview/Muscles navigation, consistency heatmap, per-exercise history
+   cards, sparkline, and the session edit sheet. */
+
+let progressSegment = 'overview';
 
 /* ---------- rendering: progress hint ---------- */
 function getProgressHintHtml(){
@@ -292,24 +294,45 @@ function renderProgressCard(ex){
 
 function renderProgress(){
   const root = document.getElementById('view-progress');
+  root.innerHTML = `
+    <div class="day-heading progress-heading"><p class="day-eyebrow">All Lifts</p><h1 class="day-title">Progress</h1></div>
+    <div class="segment-ctrl progress-segments" role="group" aria-label="Progress view">
+      <button type="button" class="segment-btn ${progressSegment==='overview'?'active':''}" data-progress-segment="overview" aria-pressed="${progressSegment==='overview'}" aria-controls="progress-content">Overview</button>
+      <button type="button" class="segment-btn ${progressSegment==='muscles'?'active':''}" data-progress-segment="muscles" aria-pressed="${progressSegment==='muscles'}" aria-controls="progress-content">Muscles</button>
+    </div>
+    <div id="progress-content"></div>`;
+  root.querySelectorAll('[data-progress-segment]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(progressSegment === btn.dataset.progressSegment) return;
+      progressSegment = btn.dataset.progressSegment;
+      renderProgress();
+      root.querySelector(`[data-progress-segment="${progressSegment}"]`).focus();
+    });
+  });
+  const content = document.getElementById('progress-content');
+  if(progressSegment === 'muscles'){
+    content.innerHTML = renderMuscleMap();
+    wireMuscleMap(root);
+    return;
+  }
+
   const allEx = Object.values(state.exercises);
   const heatmap = renderHeatmap();
 
   if(!allEx.length){
-    root.innerHTML = `<div class="day-heading" style="margin-top:6px;"><p class="day-eyebrow">All Lifts</p><h1 class="day-title">Progress</h1></div>
-      ${heatmap}
+    content.innerHTML = `${heatmap}
       <div class="empty-note">No exercises yet. Add some in the Split tab.</div>`;
     return;
   }
   const byMuscle = {};
   allEx.forEach(ex => { (byMuscle[ex.muscle] = byMuscle[ex.muscle]||[]).push(ex); });
 
-  let html = `<div class="day-heading" style="margin-top:6px;"><p class="day-eyebrow">All Lifts</p><h1 class="day-title">Progress</h1></div>${heatmap}${getProgressHintHtml()}`;
+  let html = `${heatmap}${getProgressHintHtml()}`;
   Object.keys(byMuscle).sort().forEach(muscle => {
     html += `<div class="section-title">${muscle}</div>`;
     byMuscle[muscle].forEach(ex => { html += renderProgressCard(ex); });
   });
-  root.innerHTML = html;
+  content.innerHTML = html;
   wireProgressHint();
   const hmScroll = document.getElementById('heatmap-scroll-el');
   if(hmScroll) hmScroll.scrollLeft = hmScroll.scrollWidth;
