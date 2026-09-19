@@ -1,8 +1,15 @@
 # SeannyLog
 
-A no-nonsense progressive overload tracker built as a PWA — installable on your phone, works fully offline, stores workouts locally. No account, no ads. Optional manual test notifications use a separate Web Push service; automatic reminders are paused.
+A no-nonsense progressive overload tracker built as a PWA — installable on your phone, works fully offline, stores everything locally. No account, no cloud, no ads.
 
 ![SeannyLog](icon-512.png)
+
+Notifications are retired. The implementation is preserved on
+[`feature/retired-workout-reminders`](https://github.com/SeannyBoyyy/SeannyLog/tree/feature/retired-workout-reminders).
+Version 3.12 removes notification controls and backend requests, clears this
+installation's notification credential, and attempts to unsubscribe its old push
+subscription. Existing workouts, drafts, backups, and offline support are preserved.
+The dedicated Cloudflare reminder Worker and D1 database have been deleted.
 
 ---
 
@@ -41,7 +48,6 @@ No noise. No social features. Just your lifts and whether you're progressing.
 - **Per-exercise config** — sets, rep range (min–max), weight increment (e.g. 2.5kg squat, 1kg lateral raise)
 
 **Settings**
-- **Manual test notifications** — optionally register this device and send a test notification. Automatic workout reminders are paused; enabling notifications does not resume scheduling. See [reminder status and setup](docs/reminders.md).
 - **Export backup** — via native share sheet (WhatsApp, Notes, etc.) on mobile, file download on desktop
 - **Import backup** — via file picker or paste JSON text directly
 - **Weight validation** — warns before logging if any weight looks like a typo (over 300kg / 660lbs)
@@ -51,7 +57,7 @@ No noise. No social features. Just your lifts and whether you're progressing.
 
 **Infrastructure**
 - **PWA** — installs to your home screen, works completely offline
-- **No account required** — workout data stays on your device in localStorage; optional reminders share minimal scheduling data
+- **No account required** — all data stays on your device in localStorage
 
 ---
 
@@ -62,7 +68,7 @@ No noise. No social features. Just your lifts and whether you're progressing.
 3. Set source to **Deploy from branch → main → / (root)**
 4. Your app will be live at `https://yourusername.github.io/SeannyLog/`
 
-The workout app needs no build step or configuration. Optional reminders require [Worker/D1 setup and public frontend configuration](docs/reminders.md); leaving configuration blank keeps reminders unavailable and workout logging fully functional.
+No build step, no CI, no configuration.
 
 ### Installing as a PWA
 
@@ -79,10 +85,8 @@ After installing, the app runs offline — no internet needed at the gym.
 ```
 seannylog/
 ├── index.html            # Static app shell
-├── css/                  # Existing app design
-├── js/                   # Workout app and optional reminder client/shared rules
-├── backend/              # Companion Worker, D1 migration, isolated dependencies/tests
-├── docs/reminders.md     # Setup, privacy, scheduling, and device test checklist
+├── css/                  # App styles
+├── js/                   # Workout logging, split management, and backups
 ├── manifest.json         # PWA manifest
 ├── sw.js                 # Service worker for offline support
 ├── icon-192.png          # PWA icon (any)
@@ -90,7 +94,7 @@ seannylog/
 └── icon-512-maskable.png # PWA icon (maskable, for Android adaptive icons)
 ```
 
-Preserve the relative frontend paths for the PWA to install and cache correctly. The backend is deployed separately; GitHub Pages continues to serve the static frontend.
+Preserve these relative paths for the PWA to install and cache correctly.
 
 ---
 
@@ -114,16 +118,13 @@ Then open `http://localhost:8080`.
 
 ## Data and privacy
 
-Workout data is stored in your browser's `localStorage`. Optional reminders send the device subscription, chosen local time/timezone, and minimal eligibility to your configured Worker; exercises, workout history, weights, reps, and drafts are never uploaded. See [reminder privacy and retention](docs/reminders.md#privacy-change).
-
-Use **Settings → Export backup** before clearing site data or switching devices. Backups exclude notification credentials and subscriptions; enable reminders separately on each device. Import via **Settings → Import backup** supports a file picker or pasted JSON. Disable reminders and let deletion sync before clearing browser storage.
+Workout data stays in your browser's `localStorage` and is not uploaded. Use **Settings → Export backup** before clearing site data or switching devices. Import via **Settings → Import backup** to restore — supports file picker or pasting JSON text directly.
 
 ---
 
 ## Built with
 
-- Vanilla HTML / CSS / JavaScript frontend — zero dependencies, zero build step
-- Optional Cloudflare Worker + D1 reminder backend, with isolated Web Push dependencies
+- Vanilla HTML / CSS / JavaScript — zero dependencies, zero build step
 - Web App Manifest + Service Worker for PWA installability and offline support
 - `localStorage` for persistence
 - Oswald + Inter + IBM Plex Mono (Google Fonts)

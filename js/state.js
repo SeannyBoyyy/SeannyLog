@@ -12,7 +12,7 @@ const PROGRESS_HINT_KEY = 'ironlog.progress.hint.dismissed';
 // Shown in Settings so you can confirm a deploy actually reached this device.
 // No build step ties this to sw.js's CACHE_NAME automatically — bump both by
 // hand together when you ship a change.
-const APP_VERSION = '3.11';
+const APP_VERSION = '3.12';
 let splitSegment = 'days';
 let collapsedDays = null; // null = not yet initialized; Set of day IDs when ready
 
@@ -234,7 +234,7 @@ function seedData(){
     {id:uid('day'), label:'Rest', exerciseIds:[]},
   ];
 
-  return { schemaVersion:1, cycleIndex:0, days, exercises, logs:[], restLog:[], restCompletions:[] };
+  return { schemaVersion:1, cycleIndex:0, days, exercises, logs:[], restLog:[] };
 }
 
 let state = load();
@@ -246,7 +246,6 @@ function load(){
     const parsed = JSON.parse(raw);
     if(!parsed || !parsed.days || !parsed.exercises) return seedData();
     if(!Array.isArray(parsed.restLog)) parsed.restLog = []; // backfill for older/imported backups
-    if(!Array.isArray(parsed.restCompletions)) parsed.restCompletions = [];
     return parsed;
   }catch(e){
     console.error('SeannyLog: failed to load, reseeding', e);
@@ -254,10 +253,6 @@ function load(){
   }
 }
 function save(){
-  try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    // One hook covers completion, undo, sync, every split edit, import and reset.
-    if(typeof refreshReminders === 'function') refreshReminders();
-  }
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch(e){ toast('Could not save — device storage may be full.'); }
 }

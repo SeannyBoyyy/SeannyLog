@@ -90,6 +90,12 @@ document.getElementById('sheet-backdrop').addEventListener('click', (e) => {
   if(e.target.id==='sheet-backdrop') closeSheet();
 });
 
+// Retire only this installation's notification credential; workouts and drafts
+// use separate keys and are preserved.
+try{
+  localStorage.removeItem(`seannylog.reminders.v1:${new URL('./', document.baseURI).pathname}`);
+}catch(e){}
+
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     // clients.claim() in sw.js means even a brand-new install hands control
@@ -98,13 +104,7 @@ if('serviceWorker' in navigator){
     // the "update ready" toast when something was already controlling this
     // page beforehand.
     const hadControllerAlready = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.register('sw.js').then(() => refreshReminders(true)).catch(() => {});
-    navigator.serviceWorker.addEventListener('message', event => {
-      if(event.data?.type === 'SEANNYLOG_OPEN_TODAY'){
-        closeSheet();
-        switchView('today');
-      }
-    });
+    navigator.serviceWorker.register('sw.js').catch(() => {});
 
     if(hadControllerAlready){
       navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -115,4 +115,3 @@ if('serviceWorker' in navigator){
 }
 
 renderAll();
-refreshReminders();

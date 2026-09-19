@@ -8,7 +8,6 @@ function openSettings(){
   setSheet(`
     <div class="sheet-handle"></div>
     <h2 class="sheet-title">Settings</h2>
-    ${reminderSettingsHtml()}
     <div class="settings-row">
       <div>
         <div class="settings-row-text">Weight unit</div>
@@ -50,12 +49,12 @@ function openSettings(){
     <div style="margin-top:26px;">
       <div style="font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--danger); margin-bottom:10px;">Danger Zone</div>
       <div class="settings-row" style="border-bottom:none;">
-        <div><div class="settings-row-text">Reset all data</div><div class="settings-row-sub">Wipes your split and history; disables reminders</div></div>
+        <div><div class="settings-row-text">Reset all data</div><div class="settings-row-sub">Wipes your split, history, everything</div></div>
         <button class="btn btn-small btn-danger" id="btn-reset">Reset</button>
       </div>
     </div>
     <p style="font-family:var(--mono); font-size:11px; color:var(--chalk-dim); margin-top:18px; line-height:1.6;">
-      Workout data lives only on this device. Optional reminders share minimal scheduling data. Backups exclude reminder credentials and device subscriptions. Export before clearing your browser or switching phones.
+      Everything lives only on this device. Export before clearing your browser or switching phones.
     </p>
     <p style="font-family:var(--mono); font-size:11px; color:var(--chalk-dim); margin-top:10px;">
       SeannyLog v${APP_VERSION}
@@ -71,7 +70,6 @@ function openSettings(){
     if(didUndo) closeSheet();
   });
   document.getElementById('btn-reset').addEventListener('click', openResetConfirmSheet);
-  wireReminderSettings();
   openSheet();
 }
 
@@ -109,8 +107,6 @@ function openResetConfirmSheet(){
   `);
   document.getElementById('btn-reset-cancel').addEventListener('click', () => closeSheet());
   document.getElementById('btn-reset-confirm').addEventListener('click', () => {
-    disableReminders();
-    clearDraft();
     state = seedData(); collapsedDays = null; save(); closeSheet(); renderAll();
     toast('Reset complete.');
   });
@@ -192,8 +188,6 @@ function parseAndRestoreBackup(json){
     const parsed = JSON.parse(json);
     if(!parsed.days || !parsed.exercises) throw new Error('bad shape');
     if(!Array.isArray(parsed.restLog)) parsed.restLog = [];
-    if(!Array.isArray(parsed.restCompletions)) parsed.restCompletions = [];
-    clearDraft();
     state = parsed; collapsedDays = null; save(); closeSheet(); renderAll();
     toast('Backup restored.');
     return true;
