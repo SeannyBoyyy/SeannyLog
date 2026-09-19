@@ -1,10 +1,13 @@
-const CACHE_NAME = 'seannylog-v3.8';
+const CACHE_NAME = 'seannylog-v3.11';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/style.css',
   './js/state.js',
+  './js/reminder-rules.js',
+  './js/reminder-config.js',
+  './js/reminders.js',
   './js/logic.js',
   './js/render-today.js',
   './js/render-progress.js',
@@ -27,7 +30,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('seannylog-') && k !== CACHE_NAME).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -47,8 +50,45 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => cached);
+        .catch(() => cached || (event.request.mode === 'navigate' ? caches.match('./index.html') : Response.error()));
       return cached || networkFetch;
     })
   );
+});
+
+self.addEventListener('push', event => {
+  // Always show a visible notification (required by iOS). The server owns
+  // eligibility; service workers cannot read the app's localStorage.
+  let tag = 'seannylog-reminder';
+  try{
+    const data = event.data?.json();
+    if(/^(workout-\d{4}-\d{2}-\d{2}|seannylog-test)$/.test(data?.tag)) tag = data.tag;
+  }catch(e){}
+  const base = self.registration.scope;
+  event.waitUntil(self.registration.showNotification('SeannyLog', {
+    body:'Ready for your next workout? Open SeannyLog to get started.',
+    icon:new URL('icon-192.png', base).href,
+    badge:new URL('icon-192.png', base).href,
+    tag, renotify:false,
+    data:{url:new URL('index.html#today', base).href}
+  }));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const base = new URL(self.registration.scope);
+    const url = new URL('index.html#today', base).href;
+    const windows = await self.clients.matchAll({type:'window', includeUncontrolled:true});
+    for(const client of windows){
+      const candidate = new URL(client.url);
+      if(candidate.origin === base.origin &&
+        (candidate.pathname === base.pathname || candidate.pathname === `${base.pathname}index.html`)){
+        // Messaging switches views without navigating away from a workout draft.
+        client.postMessage({type:'SEANNYLOG_OPEN_TODAY'});
+        try{ await client.focus(); return; }catch(e){}
+      }
+    }
+    await self.clients.openWindow(url);
+  })());
 });

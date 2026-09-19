@@ -98,7 +98,13 @@ if('serviceWorker' in navigator){
     // the "update ready" toast when something was already controlling this
     // page beforehand.
     const hadControllerAlready = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').then(() => refreshReminders(true)).catch(() => {});
+    navigator.serviceWorker.addEventListener('message', event => {
+      if(event.data?.type === 'SEANNYLOG_OPEN_TODAY'){
+        closeSheet();
+        switchView('today');
+      }
+    });
 
     if(hadControllerAlready){
       navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -109,3 +115,4 @@ if('serviceWorker' in navigator){
 }
 
 renderAll();
+refreshReminders();

@@ -421,6 +421,14 @@
   .settings-row:last-of-type{ border-bottom:none; }
   .settings-row-text{ font-size:13.5px; }
   .settings-row-sub{ font-family:var(--mono); font-size:11px; color:var(--chalk-dim); margin-top:3px; }
+  .reminder-settings{ padding-bottom:20px; margin-bottom:10px; border-bottom:1px solid var(--line); }
+  .reminder-settings .settings-row-sub{ line-height:1.6; }
+  .reminder-settings .field-label{ margin-top:12px; }
+  .reminder-status{ font-size:13px; line-height:1.6; margin:12px 0; }
+  .reminder-actions{ display:flex; flex-wrap:wrap; gap:8px; }
+  .reminder-actions button:disabled{ opacity:0.45; cursor:default; }
+  .reminder-actions [hidden]{ display:none; }
+  .reminder-note{ margin-top:12px; }
 
   /* ---------- toast ---------- */
   .toast{

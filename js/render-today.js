@@ -107,6 +107,8 @@ function wireTodayDelegation(){
     if(e.target.id === 'btn-finish-rest'){
       const ds = localDateKey(new Date());
       if(!state.restLog.includes(ds)) state.restLog.push(ds);
+      if(!Array.isArray(state.restCompletions)) state.restCompletions = [];
+      state.restCompletions.push({date:new Date().toISOString(), localDate:ds});
       advanceCycle(); clearDraft(); save(); renderToday();
       toast('Rest logged. Back at it next session.');
       return;

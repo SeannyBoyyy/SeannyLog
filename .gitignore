@@ -1,0 +1,10 @@
+/artifacts/
+.env*
+.dev.vars*
+.secrets/
+.wrangler/
+node_modules/
+*.db
+*.db-*
+*.sqlite*
+*.log
