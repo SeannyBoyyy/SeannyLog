@@ -20,6 +20,21 @@ function weightsMatch(a, b){
   return Math.abs(a - b) < WEIGHT_TOLERANCE;
 }
 
+// groups chronologically-ordered history into consecutive same-weight blocks,
+// using the same tolerance as the streak check — so "full history" reads as
+// a handful of weight jumps instead of a wall of near-identical rows.
+// expects history sorted ascending (exerciseLogsInOrder's own order).
+function groupByWeightTier(history){
+  const tiers = [];
+  history.forEach(session => {
+    const w = session.sets[0].weight;
+    const current = tiers[tiers.length - 1];
+    if(current && weightsMatch(current.weight, w)) current.sessions.push(session);
+    else tiers.push({weight: w, sessions: [session]});
+  });
+  return tiers;
+}
+
 function getProgressionStatus(exId){
   const ex = state.exercises[exId];
   if(!ex) return {streak:0, ready:false, lastSession:null, suggestedWeight:null};

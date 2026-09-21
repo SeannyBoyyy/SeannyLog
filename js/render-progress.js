@@ -233,6 +233,19 @@ function openEditSessionSheet(logId, exId){
   openSheet();
 }
 
+function historyRowHtml(h, ex){
+  const log = state.logs.find(l => l.id === h.id);
+  const dayLabel = state.days.find(d => d.id === log?.dayId)?.label || 'Session';
+  const exCount = Object.keys(log?.entries||{}).length;
+  return `<tr>
+    <td>${formatDate(h.date)}</td>
+    <td data-edit-log="${h.id}" data-edit-ex="${ex.id}" style="cursor:pointer;">${h.sets.map(s=>`${formatWeight(toDisplay(s.weight))}${unitLabel()}×${s.reps}`).join(', ')} <span style="opacity:0.45;">✎</span></td>
+    <td style="text-align:right; white-space:nowrap;">
+      <button class="session-del-btn" data-log-id="${h.id}" data-day-label="${escapeHtml(dayLabel)}" data-ex-count="${exCount}" data-date="${formatDate(h.date)}" aria-label="Delete session">×</button>
+    </td>
+  </tr>`;
+}
+
 function renderProgressCard(ex){
   const history = exerciseLogsInOrder(ex.id);
   const status = getProgressionStatus(ex.id);
@@ -253,18 +266,10 @@ function renderProgressCard(ex){
   const last = history[history.length-1];
   const bestWeight = Math.max(...history.map(h => Math.max(...h.sets.map(s=>s.weight))));
   const spark = sparklineSvg(history.map(h => toDisplay(Math.max(...h.sets.map(s=>s.weight)))));
-  const rows = history.slice(-6).reverse().map(h => {
-    const log = state.logs.find(l => l.id === h.id);
-    const dayLabel = state.days.find(d => d.id === log?.dayId)?.label || 'Session';
-    const exCount = Object.keys(log?.entries||{}).length;
-    return `<tr>
-      <td>${formatDate(h.date)}</td>
-      <td data-edit-log="${h.id}" data-edit-ex="${ex.id}" style="cursor:pointer;">${h.sets.map(s=>`${formatWeight(toDisplay(s.weight))}${unitLabel()}×${s.reps}`).join(', ')} <span style="opacity:0.45;">✎</span></td>
-      <td style="text-align:right; white-space:nowrap;">
-        <button class="session-del-btn" data-log-id="${h.id}" data-day-label="${escapeHtml(dayLabel)}" data-ex-count="${exCount}" data-date="${formatDate(h.date)}" aria-label="Delete session">×</button>
-      </td>
-    </tr>`;
-  }).join('');
+  const rows = history.slice(-6).reverse().map(h => historyRowHtml(h, ex)).join('');
+  const viewAllBtn = history.length > 6
+    ? `<button class="view-all-btn" data-ex="${ex.id}">view all ${history.length} sessions <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"></path></svg></button>`
+    : '';
 
   return `
     <div class="progress-card" data-ex="${ex.id}">
@@ -286,8 +291,72 @@ function renderProgressCard(ex){
         </div>
         <div class="spark-wrap">${spark}</div>
         <table class="history-table"><thead><tr><th>Date</th><th>Sets</th></tr></thead><tbody>${rows}</tbody></table>
+        ${viewAllBtn}
       </div>
     </div>`;
+}
+
+/* ---------- rendering: full history sheet (grouped by weight tier) ---------- */
+function tierRowHtml(tier, ex, ti){
+  const sessions = tier.sessions.slice().reverse();
+  const reps = tier.sessions.flatMap(s => s.sets.map(x => x.reps));
+  const repMin = Math.min(...reps), repMax = Math.max(...reps);
+  const repsLabel = repMin === repMax ? `${repMin} reps` : `${repMin}–${repMax} reps`;
+  const first = formatDate(tier.sessions[0].date);
+  const last = formatDate(tier.sessions[tier.sessions.length-1].date);
+  const dateRange = first === last ? first : `${first}–${last}`;
+  const rows = sessions.map(h => historyRowHtml(h, ex)).join('');
+  return `
+    <div class="tier-block">
+      <div class="tier-head" data-tier="${ti}">
+        <div>
+          <div class="tier-weight">${formatWeight(toDisplay(tier.weight))}${unitLabel()}</div>
+          <div class="tier-meta">${tier.sessions.length} session${tier.sessions.length!==1?'s':''} · ${dateRange} · ${repsLabel}</div>
+        </div>
+        <span class="expand-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"></path></svg></span>
+      </div>
+      <table class="history-table tier-sessions hidden"><tbody>${rows}</tbody></table>
+    </div>`;
+}
+
+function openFullHistorySheet(exId){
+  const ex = state.exercises[exId];
+  const history = exerciseLogsInOrder(exId);
+  if(!ex || !history.length) return;
+  const tiers = groupByWeightTier(history).slice().reverse();
+  const tiersHtml = tiers.map((tier, ti) => tierRowHtml(tier, ex, ti)).join('');
+
+  setSheet(`
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title">Full History</h2>
+    <p style="font-family:var(--mono); font-size:11px; color:var(--chalk-dim); margin:-8px 0 16px;">${escapeHtml(ex.name)} · ${history.length} logged</p>
+    ${tiersHtml}
+  `);
+  openSheet();
+
+  const sheetEl = document.getElementById('sheet-content');
+  sheetEl.querySelectorAll('.tier-head').forEach(head => {
+    head.addEventListener('click', () => {
+      head.nextElementSibling.classList.toggle('hidden');
+      head.classList.toggle('open');
+    });
+  });
+  sheetEl.querySelectorAll('[data-edit-log]').forEach(td => {
+    td.addEventListener('click', () => openEditSessionSheet(td.dataset.editLog, td.dataset.editEx));
+  });
+  sheetEl.querySelectorAll('[data-log-id]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const logId = btn.dataset.logId;
+      const dayLabel = btn.dataset.dayLabel;
+      const exCount = btn.dataset.exCount;
+      const dateStr = btn.dataset.date;
+      if(!confirm(`Delete the ${dayLabel} session from ${dateStr}?\n\nThis removes all ${exCount} exercise${exCount!=='1'?'s':''} logged in that session. This cannot be undone.`)) return;
+      state.logs = state.logs.filter(l => l.id !== logId);
+      save(); closeSheet(); renderProgress();
+      toast(`${dayLabel} session from ${dateStr} deleted.`);
+    });
+  });
 }
 
 function renderProgress(){
@@ -359,6 +428,14 @@ function renderProgress(){
       state.logs = state.logs.filter(l => l.id !== logId);
       save(); renderProgress();
       toast(`${dayLabel} session from ${dateStr} deleted.`);
+    });
+  });
+
+  // "view all N sessions" → full history, grouped by weight tier
+  root.querySelectorAll('.view-all-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // don't trigger card expand/collapse
+      openFullHistorySheet(btn.dataset.ex);
     });
   });
 }

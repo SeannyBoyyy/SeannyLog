@@ -211,6 +211,21 @@
   .session-del-btn{ background:none; border:none; color:var(--chalk-dim); opacity:0.5; font-size:16px; padding:0 4px; cursor:pointer; line-height:1; }
   .session-del-btn:active{ color:var(--rust); opacity:1; }
   .empty-note{ color:var(--chalk-dim); font-size:13px; padding:20px 4px; text-align:center; line-height:1.5; }
+  .view-all-btn{
+    all:unset; box-sizing:border-box; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px;
+    width:100%; margin-top:10px; padding:10px 0 0; border-top:1px solid var(--line);
+    font-family:var(--mono); font-size:11px; color:var(--rust); letter-spacing:0.02em;
+  }
+  .view-all-btn svg{ width:12px; height:12px; }
+  .view-all-btn:active{ color:var(--rust-dim); }
+  .tier-block{ margin-bottom:2px; }
+  .tier-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; padding:10px 2px; border-bottom:1px solid var(--line); }
+  .tier-weight{ font-family:var(--display); font-size:14px; }
+  .tier-meta{ font-family:var(--mono); font-size:10.5px; color:var(--chalk-dim); margin-top:2px; }
+  .tier-head .expand-hint svg{ width:12px; height:12px; transition:transform 200ms; }
+  .tier-head.open .expand-hint svg{ transform:rotate(180deg); }
+  .tier-sessions{ margin:0 0 6px; }
+  .tier-sessions.hidden{ display:none; }
 
   /* ---------- split view ---------- */
   .day-card{
