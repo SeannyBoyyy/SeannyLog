@@ -81,10 +81,14 @@ function renderHeatmap(){
 
   // month labels
   const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const mLabels=[]; let lastM=-1;
-  weeks.forEach((wk,wi)=>{
-    const m=parseInt(wk[0].ds.slice(5,7))-1;
-    if(m!==lastM){ mLabels.push({wi,label:MON[m]}); lastM=m; }
+    const mLabels=[];
+    weeks.forEach((wk,wi)=>{
+      wk.forEach(cell=>{
+        if(cell.ds.slice(8)==='01'){
+          const m=parseInt(cell.ds.slice(5,7))-1;
+          mLabels.push({wi,label:MON[m]});
+        }
+      });
   });
 
   // stats
@@ -131,7 +135,7 @@ function renderHeatmap(){
 
   // month labels
   mLabels.forEach(({wi,label})=>{
-    const x=DLW+wi*(C+G);
+      const x=DLW+wi*(C+G);
     svg+=`<text x="${x}" y="10" font-family="IBM Plex Mono,monospace" font-size="9" fill="#A39E94">${label}</text>`;
   });
 
